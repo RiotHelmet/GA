@@ -37,3 +37,9 @@ canvas {
   left: 100px;
   top: 100px;
 }
+
+#touching {
+  width: 100%;
+  border-bottom: 2px solid black;
+  height: 30px;
+}
