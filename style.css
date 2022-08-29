@@ -16,8 +16,6 @@ html {
 
 canvas {
   border: black 2px solid;
-  width: 40%;
-  transform: rotate(180deg);
 }
 
 .infoContainer p {

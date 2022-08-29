@@ -151,15 +151,18 @@ function bomb(x, y, power) {
     x: x,
     y: y,
   };
-
-  for (let i = 0; i < particles.length; i++) {
-    const Object = particles[i];
-    if (dist(Object, bombPos) < 100) {
+  console.log(bombPos);
+  particles.forEach((Object) => {
+    // console.log(dist(Object.pos, bombPos));
+    if (dist(Object.pos, bombPos) < power * 20) {
+      console.log(Object);
       blastDirection = Dir(Object.pos, bombPos);
-      Object.velocity.x += Math.cos(blastDirection) * 50;
-      Object.velocity.y += Math.sin(blastDirection) * 50;
+      Object.accelerate(
+        Math.cos(blastDirection) * -power * 100,
+        Math.sin(blastDirection) * -power * 100
+      );
     }
-  }
+  });
 }
 
 function applyConstraints() {
@@ -223,12 +226,12 @@ function applyConstraints() {
 }
 
 canvas.addEventListener("mousemove", function (e) {
-  mousePos.x = e.offsetX / 0.75;
-  mousePos.y = e.offsetY / 0.75;
+  mousePos.x = e.offsetX;
+  mousePos.y = e.offsetY;
 });
 
 canvas.addEventListener("mouseup", function (e) {
-  bomb(mousePos.x, mousePos.y, 50);
+  bomb(mousePos.x, mousePos.y, 10);
 });
 
 function drawObjects() {
@@ -247,11 +250,6 @@ let canvasRotation = 0;
 window.addEventListener("keydown", function (e) {
   if (e.key == "l") {
     new particle(mousePos.x, mousePos.y, Math.random() * 10 + 4);
-    particles[particles.length - 1].accelerate(1000, 700);
-  }
-
-  if (e.key == "h") {
-    new particle(mousePos.x, mousePos.y, 500);
     particles[particles.length - 1].accelerate(1000, 700);
   }
 
