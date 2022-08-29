@@ -3,7 +3,7 @@ let ctx = canvas.getContext("2d");
 
 let fps;
 let fpsInfo = document.getElementById("fps");
-let deltaT = 1 / 144;
+let deltaT;
 
 let scale = 100;
 let loss = 0.7;
@@ -51,6 +51,7 @@ class particle {
     ctx.beginPath();
     ctx.arc(this.pos.x, this.pos.y, this.radius, 0, 2 * Math.PI);
     ctx.fill();
+    ctx.stroke();
   }
 
   accelerate(accX, accY) {
@@ -144,6 +145,23 @@ function resolveCollision(Object, Other) {
   Other.velocity.y = Math.sin(collisionAngle) * vFin2 * loss;
 }
 
+function bomb(x, y, power) {
+  console.log("boom");
+  let bombPos = {
+    x: x,
+    y: y,
+  };
+
+  for (let i = 0; i < particles.length; i++) {
+    const Object = particles[i];
+    if (dist(Object, bombPos) < 100) {
+      blastDirection = Dir(Object.pos, bombPos);
+      Object.velocity.x += Math.cos(blastDirection) * 50;
+      Object.velocity.y += Math.sin(blastDirection) * 50;
+    }
+  }
+}
+
 function applyConstraints() {
   if (showCircle == true) {
     ctx.strokeStyle = "black";
@@ -209,12 +227,22 @@ canvas.addEventListener("mousemove", function (e) {
   mousePos.y = e.offsetY / 0.75;
 });
 
+canvas.addEventListener("mouseup", function (e) {
+  bomb(mousePos.x, mousePos.y, 50);
+});
+
 function drawObjects() {
   particles.forEach((Object) => {
     Object.draw();
-    Object.accelerate(0, 10);
+
+    Object.accelerate(
+      Math.cos(degrees_to_radians(-canvasRotation) + Math.PI / 2) * 10,
+      Math.sin(degrees_to_radians(-canvasRotation) + Math.PI / 2) * 10
+    );
   });
 }
+
+let canvasRotation = 0;
 
 window.addEventListener("keydown", function (e) {
   if (e.key == "l") {
@@ -230,10 +258,29 @@ window.addEventListener("keydown", function (e) {
   if (e.key == "k") {
     showCircle = false;
   }
+
+  if (e.keyCode == "37") {
+    canvasRotation += 15;
+  }
+
+  if (e.keyCode == "39") {
+    canvasRotation -= 15;
+  }
+
+  canvas.style.transform = `rotate(${canvasRotation}deg)`;
 });
+
+var lastLoop;
 
 function update() {
   requestAnimationFrame(update);
+
+  var thisLoop = new Date();
+  fps = 1000 / (thisLoop - lastLoop);
+  lastLoop = thisLoop;
+  fpsInfo.innerHTML = `Fps: ${Math.round(fps)}`;
+  deltaT = 1 / fps;
+
   clear();
   verletIntegrate();
 
