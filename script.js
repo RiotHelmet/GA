@@ -6,7 +6,8 @@ let fpsInfo = document.getElementById("fps");
 let deltaT;
 
 let scale = 100;
-let loss = 0.7;
+// coefficient of restitution
+let CoR = 0.7;
 let mousePos = {
   x: 0,
   y: 0,
@@ -71,6 +72,21 @@ function verletIntegrate() {
       ((Object.pos.x - Object.oldpos.x) / scale / deltaT) * friction;
     Object.velocity.y =
       ((Object.pos.y - Object.oldpos.y) / scale / deltaT) * friction;
+    minimunVelocity = 0;
+
+    if (
+      Object.velocity.x < minimunVelocity &&
+      Object.velocity.x > -minimunVelocity
+    ) {
+      Object.velocity.x = 0;
+    }
+
+    if (
+      Object.velocity.y < minimunVelocity &&
+      Object.velocity.y > -minimunVelocity
+    ) {
+      Object.velocity.x = 0;
+    }
 
     Object.oldpos.x = Object.pos.x;
     Object.oldpos.y = Object.pos.y;
@@ -110,39 +126,44 @@ function resolveCollision(Object, Other) {
   let vInit1 = Math.sqrt(Object.velocity.x ** 2 + Object.velocity.y ** 2);
   let vInit2 = Math.sqrt(Other.velocity.x ** 2 + Other.velocity.y ** 2);
 
-  if (Object.velocity.x < 0) {
-    if (Object.velocity.y >= 0) {
-      vInit1 *= -1;
-    }
-  }
-  if (Object.velocity.y < 0) {
-    if (Object.velocity.x >= 0) {
-      vInit1 *= -1;
-    }
-  }
+  // if (Object.velocity.x < 0) {
+  //   if (Object.velocity.y >= 0) {
+  //     vInit1 *= -1;
+  //   }
+  // }
+  // if (Object.velocity.y < 0) {
+  //   if (Object.velocity.x >= 0) {
+  //     vInit1 *= -1;
+  //   }
+  // }
 
-  if (Other.velocity.x < 0) {
-    if (Other.velocity.y >= 0) {
-      vInit2 *= -1;
-    }
-  }
-  if (Other.velocity.y < 0) {
-    if (Other.velocity.x >= 0) {
-      vInit2 *= -1;
-    }
-  }
+  // if (Other.velocity.x < 0) {
+  //   if (Other.velocity.y >= 0) {
+  //     vInit2 *= -1;
+  //   }
+  // }
+  // if (Other.velocity.y < 0) {
+  //   if (Other.velocity.x >= 0) {
+  //     vInit2 *= -1;
+  //   }
+  // }
+
+  // let vFin1 =
+  //   ((m1 - m2) / (m1 + m2)) * vInit1 + ((2 * m2) / (m1 + m2)) * vInit2;
+
+  // let vFin2 =
+  //   ((2 * m1) / (m1 + m2)) * vInit1 + ((m2 - m1) / (m1 + m2)) * vInit2;
 
   let vFin1 =
-    ((m1 - m2) / (m1 + m2)) * vInit1 + ((2 * m2) / (m1 + m2)) * vInit2;
-
+    (CoR * m2 * (vInit2 - vInit1) + m1 * vInit1 + m2 * vInit2) / (m1 + m2);
   let vFin2 =
-    ((2 * m1) / (m1 + m2)) * vInit1 + ((m2 - m1) / (m1 + m2)) * vInit2;
+    (CoR * m1 * (vInit1 - vInit2) + m1 * vInit1 + m2 * vInit2) / (m1 + m2);
 
-  Object.velocity.x = Math.cos(collisionAngle - Math.PI) * vFin1 * loss;
-  Object.velocity.y = Math.sin(collisionAngle - Math.PI) * vFin1 * loss;
+  Object.velocity.x = Math.cos(collisionAngle - Math.PI) * vFin1;
+  Object.velocity.y = Math.sin(collisionAngle - Math.PI) * vFin1;
 
-  Other.velocity.x = Math.cos(collisionAngle) * vFin2 * loss;
-  Other.velocity.y = Math.sin(collisionAngle) * vFin2 * loss;
+  Other.velocity.x = Math.cos(collisionAngle) * vFin2;
+  Other.velocity.y = Math.sin(collisionAngle) * vFin2;
 }
 
 function bomb(x, y, power) {
@@ -207,20 +228,18 @@ function applyConstraints() {
     }
     if (Object.pos.x > canvas.width - Object.radius) {
       Object.pos.x = canvas.width - Object.radius;
-      Object.oldpos.x = Object.pos.x + Object.velocity.x * deltaT * scale;
+      Object.oldpos.x = Object.pos.x + Object.velocity.x * deltaT * scale * CoR;
     } else if (Object.pos.x < 0 + Object.radius) {
       Object.pos.x = Object.radius;
-      Object.oldpos.x = Object.pos.x + Object.velocity.x * deltaT * scale;
+      Object.oldpos.x = Object.pos.x + Object.velocity.x * deltaT * scale * CoR;
     }
 
     if (Object.pos.y > canvas.height - Object.radius) {
-      var timerStop = new Date();
-      // console.log(timerStop - timerStart);
       Object.pos.y = canvas.height - Object.radius;
-      Object.oldpos.y = Object.pos.y + Object.velocity.y * deltaT * scale;
+      Object.oldpos.y = Object.pos.y + Object.velocity.y * deltaT * scale * CoR;
     } else if (Object.pos.y < 0 + Object.radius) {
       Object.pos.y = Object.radius;
-      Object.oldpos.y = Object.pos.y + Object.velocity.y * deltaT * scale;
+      Object.oldpos.y = Object.pos.y + Object.velocity.y * deltaT * scale * CoR;
     }
   });
 }
@@ -249,7 +268,8 @@ let canvasRotation = 0;
 
 window.addEventListener("keydown", function (e) {
   if (e.key == "l") {
-    new particle(mousePos.x, mousePos.y, Math.random() * 10 + 4);
+    new particle(mousePos.x, mousePos.y, Math.random() * 10 + 5);
+    // new particle(mousePos.x, mousePos.y, 1);
     particles[particles.length - 1].accelerate(1000, 700);
   }
 
@@ -261,6 +281,10 @@ window.addEventListener("keydown", function (e) {
     canvasRotation += 15;
   }
 
+  if (e.key == "g") {
+    new particle(mousePos.x, mousePos.y, 20);
+  }
+
   if (e.keyCode == "39") {
     canvasRotation -= 15;
   }
@@ -270,13 +294,34 @@ window.addEventListener("keydown", function (e) {
 
 var lastLoop;
 
-function update() {
-  requestAnimationFrame(update);
+// function update() {
+//   requestAnimationFrame(update);
+
+//   var thisLoop = new Date();
+//   fps = 1000 / (thisLoop - lastLoop);
+//   lastLoop = thisLoop;
+//   fpsInfo.innerHTML = `Fps: ${Math.round(fps)}`;
+//   deltaT = 1 / fps;
+
+//   clear();
+//   verletIntegrate();
+
+//   applyConstraints();
+//   drawObjects();
+// }
+
+// update();
+let substep = 16;
+window.setInterval(() => {
+  // requestAnimationFrame(update);
 
   var thisLoop = new Date();
   fps = 1000 / (thisLoop - lastLoop);
   lastLoop = thisLoop;
   fpsInfo.innerHTML = `Fps: ${Math.round(fps)}`;
+  document.getElementById(
+    "Objects"
+  ).innerHTML = `Objects : ${particles.length}`;
   deltaT = 1 / fps;
 
   clear();
@@ -284,9 +329,7 @@ function update() {
 
   applyConstraints();
   drawObjects();
-}
-
-update();
+}, 1000 / (60 * substep));
 
 //
 //
