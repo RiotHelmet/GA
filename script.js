@@ -11,6 +11,8 @@ let ropeSlider = document.getElementById("rope-Slider").value;
 
 let bombSlider = document.getElementById("bomb-Slider").value;
 
+let clothSlider = document.getElementById("cloth-Slider").value;
+
 let scale = 100;
 // coefficient of restitution
 let CoR = 0.7;
@@ -37,27 +39,35 @@ class Vector {
 
 class stick {
   constructor(p1, p2) {
-    this.startpos = p1;
-    this.endpos = p2;
+    this.startPoint = p1;
+    this.endPoint = p2;
+    this.startpos = new Vector(p1.pos.x, p1.pos.y);
+    this.endpos = new Vector(p2.pos.x, p2.pos.y);
     this.length = dist(p1.pos, p2.pos);
     sticks.push(this);
   }
   update() {
-    let dir = Dir(this.startpos.pos, this.endpos.pos);
-    let Dist = dist(this.startpos.pos, this.endpos.pos);
+    this.startpos.x = this.startPoint.pos.x;
+    this.startpos.y = this.startPoint.pos.y;
+
+    this.endpos.x = this.endPoint.pos.x;
+    this.endpos.y = this.endPoint.pos.y;
+
+    let dir = Dir(this.startpos, this.endpos);
+    let Dist = dist(this.startpos, this.endpos);
     let dDist = Dist - this.length;
     if (dDist != 0) {
-      this.startpos.pos.x += Math.cos(dir) * (dDist / 2);
-      this.startpos.pos.y += Math.sin(dir) * (dDist / 2);
-      this.endpos.pos.x -= Math.cos(dir) * (dDist / 2);
-      this.endpos.pos.y -= Math.sin(dir) * (dDist / 2);
+      this.startPoint.pos.x += Math.cos(dir) * (dDist / 2);
+      this.startPoint.pos.y += Math.sin(dir) * (dDist / 2);
+      this.endPoint.pos.x -= Math.cos(dir) * (dDist / 2);
+      this.endPoint.pos.y -= Math.sin(dir) * (dDist / 2);
     }
   }
   draw() {
     ctx.strokeStyle = "red";
     ctx.beginPath();
-    ctx.moveTo(this.startpos.pos.x, this.startpos.pos.y);
-    ctx.lineTo(this.endpos.pos.x, this.endpos.pos.y);
+    ctx.moveTo(this.startpos.x, this.startpos.y);
+    ctx.lineTo(this.endpos.x, this.endpos.y);
     ctx.stroke();
   }
 }
@@ -161,12 +171,39 @@ function rope(start, end, length, startState) {
       particles[particles.length - length + i + 1]
     );
   }
-  console.log("yo");
 
   if (end !== false) {
     particles[particles.length - 1].state = true;
     particles[particles.length - 1].startpos.x = end.x;
     particles[particles.length - 1].startpos.y = end.y;
+  }
+}
+
+function cloth(start, lengthX, lengthY) {
+  for (let i = 0; i < lengthX; i++) {
+    new particle(start.x + i * 15, start.y, 1, true);
+  }
+  for (let i = 1; i < lengthY; i++) {
+    for (let j = 0; j < lengthX; j++) {
+      new particle(start.x + j * 15, start.y + i * 15, 1, false);
+    }
+  }
+
+  for (let i = 0; i < lengthX * lengthY; i++) {}
+
+  for (let j = 0; j < lengthY; j++) {
+    for (let i = 0; i < lengthX - 1; i++) {
+      new stick(
+        particles[particles.length - lengthX * lengthY + i + j * lengthX],
+        particles[particles.length - lengthX * lengthY + i + 1 + j * lengthX]
+      );
+      new stick(
+        particles[particles.length - lengthX * lengthY + i + j * lengthX],
+        particles[
+          particles.length - lengthX * lengthY + i + lengthX + j * lengthX
+        ]
+      );
+    }
   }
 }
 
@@ -313,15 +350,18 @@ canvas.addEventListener("mousemove", function (e) {
   mousePos.x = e.offsetX;
   mousePos.y = e.offsetY;
 });
-console.log(particleSlider);
+let number = 15;
 canvas.addEventListener("mousedown", function (e) {
   mousedown = true;
+  console.log(clothSlider);
   if (currentStyle == "particle") {
     new particle(mousePos.x, mousePos.y, particleSlider);
   } else if (currentStyle == "rope") {
     rope({ x: mousePos.x, y: mousePos.y }, false, ropeSlider, true);
   } else if (currentStyle == "bomb") {
     bomb(mousePos.x, mousePos.y, bombSlider);
+  } else if (currentStyle == "cloth") {
+    cloth(mousePos, number, number);
   }
 });
 
@@ -347,10 +387,6 @@ function drawObjects() {
 let canvasRotation = 0;
 
 window.addEventListener("keydown", function (e) {
-  if (e.key == "k") {
-    showCircle = false;
-  }
-
   if (e.keyCode == "37") {
     canvasRotation += 15;
   }
@@ -391,6 +427,8 @@ window.setInterval(() => {
   ropeSlider = document.getElementById("rope-Slider").value;
 
   bombSlider = document.getElementById("bomb-Slider").value;
+
+  clothSlider = document.getElementById("cloth-Slider").value;
 
   var thisLoop = new Date();
   fps = 1000 / (thisLoop - lastLoop);

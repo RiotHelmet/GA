@@ -29,6 +29,11 @@ canvas {
   flex-direction: column;
 }
 
+p {
+  margin: 0;
+  padding: 0;
+}
+
 .gameUI * {
   padding: 5px;
 }
@@ -44,13 +49,21 @@ canvas {
 }
 
 #particleSlider {
-  display: none;
+  display: block;
+  background-color: rgb(60, 60, 60);
 }
 
 #ropeSlider {
   display: none;
+  background-color: rgb(60, 60, 60);
 }
 
 #bombSlider {
   display: none;
+  background-color: rgb(60, 60, 60);
+}
+
+#clothSlider {
+  display: none;
+  background-color: rgb(60, 60, 60);
 }

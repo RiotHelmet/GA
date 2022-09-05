@@ -11,14 +11,30 @@
     <div class="gameUI" id="mainUI">
       <div id="ui-fps">100</div>
       <div id="ui-amount">100</div>
+
+      <div>
+        Clear:
+        <button onclick="particles = []; sticks = []"></button>
+      </div>
+
+      <div>
+        Toggle Circle:
+        <button
+          onclick="if(showCircle == false) {showCircle = true} else {
+          showCircle = false
+        }; "
+        ></button>
+      </div>
+
       <div>
         Particle:
         <button
           id="particleButton"
-          onclick="currentStyle = 'particle'; document.getElementById('particleSlider').style.display = 'block'; document.getElementById('ropeSlider').style.display = 'none'; document.getElementById('bombSlider').style.display = 'none';  "
+          onclick="currentStyle = 'particle'; document.getElementById('particleSlider').style.display = 'block'; document.getElementById('ropeSlider').style.display = 'none'; document.getElementById('bombSlider').style.display = 'none';  document.getElementById('clothSlider').style.display = 'none';"
         ></button>
       </div>
       <div class="slidecontainer" id="particleSlider">
+        <p>Size</p>
         <input
           type="range"
           min="1"
@@ -32,15 +48,16 @@
         Rope:
         <button
           id="ropeButton"
-          onclick="currentStyle = 'rope'; document.getElementById('particleSlider').style.display = 'none'; document.getElementById('ropeSlider').style.display = 'block'; document.getElementById('bombSlider').style.display = 'none';"
+          onclick="currentStyle = 'rope'; document.getElementById('particleSlider').style.display = 'none'; document.getElementById('ropeSlider').style.display = 'block'; document.getElementById('bombSlider').style.display = 'none'; document.getElementById('clothSlider').style.display = 'none';"
         ></button>
       </div>
       <div class="slidecontainer" id="ropeSlider">
+        <p>Length</p>
         <input
           type="range"
           min="1"
-          max="100"
-          value="30"
+          max="30"
+          value="15"
           class="slider"
           id="rope-Slider"
         />
@@ -49,10 +66,11 @@
         Bomb:
         <button
           id="bombButton"
-          onclick="currentStyle = 'bomb'; document.getElementById('particleSlider').style.display = 'none'; document.getElementById('ropeSlider').style.display = 'none'; document.getElementById('bombSlider').style.display = 'block';"
+          onclick="currentStyle = 'bomb'; document.getElementById('particleSlider').style.display = 'none'; document.getElementById('ropeSlider').style.display = 'none'; document.getElementById('bombSlider').style.display = 'block'; document.getElementById('clothSlider').style.display = 'none';"
         ></button>
       </div>
       <div class="slidecontainer" id="bombSlider">
+        <p>Power</p>
         <input
           type="range"
           min="1"
@@ -60,6 +78,24 @@
           value="50"
           class="slider"
           id="bomb-Slider"
+        />
+      </div>
+      <div>
+        Cloth:
+        <button
+          id="clothButton"
+          onclick="currentStyle = 'cloth'; document.getElementById('particleSlider').style.display = 'none'; document.getElementById('ropeSlider').style.display = 'none'; document.getElementById('bombSlider').style.display = 'none';document.getElementById('clothSlider').style.display = 'block';"
+        ></button>
+      </div>
+      <div class="slidecontainer" id="clothSlider">
+        <p>Size (x^2)</p>
+        <input
+          type="range"
+          min="1"
+          max="25"
+          value="10"
+          class="slider"
+          id="cloth-Slider"
         />
       </div>
     </div>
