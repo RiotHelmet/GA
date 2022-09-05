@@ -2,8 +2,14 @@ let canvas = document.getElementById("canvas");
 let ctx = canvas.getContext("2d");
 
 let fps;
-let fpsInfo = document.getElementById("fps");
+let fpsInfo = document.getElementById("ui-fps");
 let deltaT;
+
+let particleSlider = document.getElementById("particle-Slider").value;
+
+let ropeSlider = document.getElementById("rope-Slider").value;
+
+let bombSlider = document.getElementById("bomb-Slider").value;
 
 let scale = 100;
 // coefficient of restitution
@@ -18,8 +24,10 @@ let showCircle = true;
 let friction = 0.995;
 
 let particles = [];
+let buttons = [];
 
 let sticks = [];
+let currentStyle = "particle";
 
 class Vector {
   constructor(x, y) {
@@ -244,7 +252,7 @@ function applyConstraints() {
   if (showCircle == true) {
     ctx.strokeStyle = "black";
     ctx.beginPath();
-    ctx.arc(canvas.width / 2, canvas.height / 2, 400, 0, 2 * Math.PI);
+    ctx.arc(canvas.width / 2, canvas.height / 2, 300, 0, 2 * Math.PI);
     ctx.stroke();
   }
   sticks.forEach((Object) => {
@@ -263,7 +271,7 @@ function applyConstraints() {
     if (showCircle == true) {
       if (
         dist(Object.pos, { x: canvas.width / 2, y: canvas.height / 2 }) >
-        400 - Object.radius
+        300 - Object.radius
       ) {
         let angle = Dir(Object.pos, {
           x: canvas.width / 2,
@@ -273,13 +281,13 @@ function applyConstraints() {
         Object.pos.x +=
           Math.cos(angle) *
           (dist(Object.pos, { x: canvas.width / 2, y: canvas.height / 2 }) -
-            400 +
+            300 +
             Object.radius);
 
         Object.pos.y +=
           Math.sin(angle) *
           (dist(Object.pos, { x: canvas.width / 2, y: canvas.height / 2 }) -
-            400 +
+            300 +
             Object.radius);
       }
     }
@@ -300,14 +308,25 @@ function applyConstraints() {
     }
   });
 }
-
+let mousedown = false;
 canvas.addEventListener("mousemove", function (e) {
   mousePos.x = e.offsetX;
   mousePos.y = e.offsetY;
 });
+console.log(particleSlider);
+canvas.addEventListener("mousedown", function (e) {
+  mousedown = true;
+  if (currentStyle == "particle") {
+    new particle(mousePos.x, mousePos.y, particleSlider);
+  } else if (currentStyle == "rope") {
+    rope({ x: mousePos.x, y: mousePos.y }, false, ropeSlider, true);
+  } else if (currentStyle == "bomb") {
+    bomb(mousePos.x, mousePos.y, bombSlider);
+  }
+});
 
 canvas.addEventListener("mouseup", function (e) {
-  bomb(mousePos.x, mousePos.y, 10);
+  mousedown = false;
 });
 
 function drawObjects() {
@@ -320,25 +339,20 @@ function drawObjects() {
       Math.sin(degrees_to_radians(-canvasRotation) + Math.PI / 2) * 10
     );
   });
+  buttons.forEach((Object) => {
+    Object.draw();
+  });
 }
 
 let canvasRotation = 0;
 
 window.addEventListener("keydown", function (e) {
-  if (e.key == "l") {
-    new particle(mousePos.x, mousePos.y, 4);
-  }
-
   if (e.key == "k") {
     showCircle = false;
   }
 
   if (e.keyCode == "37") {
     canvasRotation += 15;
-  }
-
-  if (e.key == "g") {
-    rope({ x: mousePos.x, y: mousePos.y }, false, 20, true);
   }
 
   if (e.keyCode == "39") {
@@ -368,15 +382,23 @@ var lastLoop;
 
 // update();
 let substep = 16;
+
 window.setInterval(() => {
   // requestAnimationFrame(update);
+
+  particleSlider = document.getElementById("particle-Slider").value;
+
+  ropeSlider = document.getElementById("rope-Slider").value;
+
+  bombSlider = document.getElementById("bomb-Slider").value;
 
   var thisLoop = new Date();
   fps = 1000 / (thisLoop - lastLoop);
   lastLoop = thisLoop;
   fpsInfo.innerHTML = `Fps: ${Math.round(fps)}`;
+
   document.getElementById(
-    "Objects"
+    "ui-amount"
   ).innerHTML = `Objects : ${particles.length}`;
   deltaT = 1 / fps;
 
@@ -429,4 +451,13 @@ function getRandomColor() {
     color += letters[Math.floor(Math.random() * 16)];
   }
   return color;
+}
+
+function isInside(pos, rect) {
+  return (
+    pos.x > rect.pos.x &&
+    pos.x < rect.pos.x + rect.width &&
+    pos.y < rect.y + rect.height &&
+    pos.y > rect.y
+  );
 }

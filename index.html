@@ -8,15 +8,63 @@
     <link rel="stylesheet" href="style.css" />
   </head>
   <body>
-    <div id="info">
-      <div class="infoContainer">
-        <p id="fps"></p>
+    <div class="gameUI" id="mainUI">
+      <div id="ui-fps">100</div>
+      <div id="ui-amount">100</div>
+      <div>
+        Particle:
+        <button
+          id="particleButton"
+          onclick="currentStyle = 'particle'; document.getElementById('particleSlider').style.display = 'block'; document.getElementById('ropeSlider').style.display = 'none'; document.getElementById('bombSlider').style.display = 'none';  "
+        ></button>
       </div>
-      <div class="infoContainer">
-        <p id="Objects"></p>
+      <div class="slidecontainer" id="particleSlider">
+        <input
+          type="range"
+          min="1"
+          max="30"
+          value="10"
+          class="slider"
+          id="particle-Slider"
+        />
+      </div>
+      <div>
+        Rope:
+        <button
+          id="ropeButton"
+          onclick="currentStyle = 'rope'; document.getElementById('particleSlider').style.display = 'none'; document.getElementById('ropeSlider').style.display = 'block'; document.getElementById('bombSlider').style.display = 'none';"
+        ></button>
+      </div>
+      <div class="slidecontainer" id="ropeSlider">
+        <input
+          type="range"
+          min="1"
+          max="100"
+          value="30"
+          class="slider"
+          id="rope-Slider"
+        />
+      </div>
+      <div>
+        Bomb:
+        <button
+          id="bombButton"
+          onclick="currentStyle = 'bomb'; document.getElementById('particleSlider').style.display = 'none'; document.getElementById('ropeSlider').style.display = 'none'; document.getElementById('bombSlider').style.display = 'block';"
+        ></button>
+      </div>
+      <div class="slidecontainer" id="bombSlider">
+        <input
+          type="range"
+          min="1"
+          max="100"
+          value="50"
+          class="slider"
+          id="bomb-Slider"
+        />
       </div>
     </div>
-    <canvas width="1000" height="1000" id="canvas"></canvas>
+
+    <canvas width="750" height="750" id="canvas"></canvas>
     <script src="script.js"></script>
   </body>
 </html>
