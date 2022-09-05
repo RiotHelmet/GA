@@ -19,28 +19,55 @@ let friction = 0.995;
 
 let particles = [];
 
+let sticks = [];
+
+class Vector {
+  constructor(x, y) {
+    (this.x = x), (this.y = y);
+  }
+}
+
+class stick {
+  constructor(p1, p2) {
+    this.startpos = p1;
+    this.endpos = p2;
+    this.length = dist(p1.pos, p2.pos);
+    sticks.push(this);
+  }
+  update() {
+    let dir = Dir(this.startpos.pos, this.endpos.pos);
+    let Dist = dist(this.startpos.pos, this.endpos.pos);
+    let dDist = Dist - this.length;
+    if (dDist != 0) {
+      this.startpos.pos.x += Math.cos(dir) * (dDist / 2);
+      this.startpos.pos.y += Math.sin(dir) * (dDist / 2);
+      this.endpos.pos.x -= Math.cos(dir) * (dDist / 2);
+      this.endpos.pos.y -= Math.sin(dir) * (dDist / 2);
+    }
+  }
+  draw() {
+    ctx.strokeStyle = "red";
+    ctx.beginPath();
+    ctx.moveTo(this.startpos.pos.x, this.startpos.pos.y);
+    ctx.lineTo(this.endpos.pos.x, this.endpos.pos.y);
+    ctx.stroke();
+  }
+}
+
 class particle {
-  constructor(x, y, mass) {
+  constructor(x, y, mass, state) {
     particles.push(this);
-    this.pos = {
-      x: x,
-      y: y,
-    };
+    this.pos = new Vector(x, y);
     this.mass = mass;
-    this.velocity = {
-      x: 0,
-      y: 0,
-    };
-
-    this.oldpos = {
-      x: x,
-      y: y,
-    };
-
-    this.acceleration = {
-      x: 0,
-      y: 0,
-    };
+    this.velocity = new Vector(0, 0);
+    if (!state) {
+      this.state = false;
+    } else {
+      this.state = state;
+    }
+    this.oldpos = new Vector(x, y);
+    this.startpos = new Vector(x, y);
+    this.acceleration = new Vector(0, 0);
 
     this.color = getRandomColor();
     this.radius = (mass / 30) * scale;
@@ -68,36 +95,41 @@ function clear() {
 
 function verletIntegrate() {
   particles.forEach((Object) => {
-    Object.velocity.x =
-      ((Object.pos.x - Object.oldpos.x) / scale / deltaT) * friction;
-    Object.velocity.y =
-      ((Object.pos.y - Object.oldpos.y) / scale / deltaT) * friction;
-    minimunVelocity = 0;
+    if (Object.state == false) {
+      Object.velocity.x =
+        ((Object.pos.x - Object.oldpos.x) / scale / deltaT) * friction;
+      Object.velocity.y =
+        ((Object.pos.y - Object.oldpos.y) / scale / deltaT) * friction;
+      minimunVelocity = 0;
 
-    if (
-      Object.velocity.x < minimunVelocity &&
-      Object.velocity.x > -minimunVelocity
-    ) {
-      Object.velocity.x = 0;
+      if (
+        Object.velocity.x < minimunVelocity &&
+        Object.velocity.x > -minimunVelocity
+      ) {
+        Object.velocity.x = 0;
+      }
+
+      if (
+        Object.velocity.y < minimunVelocity &&
+        Object.velocity.y > -minimunVelocity
+      ) {
+        Object.velocity.x = 0;
+      }
+
+      Object.oldpos.x = Object.pos.x;
+      Object.oldpos.y = Object.pos.y;
+
+      Object.pos.x +=
+        Object.velocity.x * scale * deltaT + Object.acceleration.x * scale;
+      Object.pos.y +=
+        Object.velocity.y * scale * deltaT + Object.acceleration.y * scale;
+
+      Object.acceleration.x = 0;
+      Object.acceleration.y = 0;
+    } else {
+      Object.pos.x = Object.startpos.x;
+      Object.pos.y = Object.startpos.y;
     }
-
-    if (
-      Object.velocity.y < minimunVelocity &&
-      Object.velocity.y > -minimunVelocity
-    ) {
-      Object.velocity.x = 0;
-    }
-
-    Object.oldpos.x = Object.pos.x;
-    Object.oldpos.y = Object.pos.y;
-
-    Object.pos.x +=
-      Object.velocity.x * scale * deltaT + Object.acceleration.x * scale;
-    Object.pos.y +=
-      Object.velocity.y * scale * deltaT + Object.acceleration.y * scale;
-
-    Object.acceleration.x = 0;
-    Object.acceleration.y = 0;
   });
 }
 
@@ -106,6 +138,28 @@ function solveCollision(Object, Other) {
     (Object.pos.x - Other.pos.x) ** 2 + (Object.pos.y - Other.pos.y) ** 2;
 
   return distance <= (Object.radius + Other.radius) ** 2;
+}
+
+function rope(start, end, length, startState) {
+  new particle(start.x, start.y, 1.5, startState);
+
+  for (let i = 1; i < length; i++) {
+    new particle(start.x + i * 20, start.y, 1.5);
+  }
+
+  for (let i = 0; i < length - 1; i++) {
+    new stick(
+      particles[particles.length - length + i],
+      particles[particles.length - length + i + 1]
+    );
+  }
+  console.log("yo");
+
+  if (end !== false) {
+    particles[particles.length - 1].state = true;
+    particles[particles.length - 1].startpos.x = end.x;
+    particles[particles.length - 1].startpos.y = end.y;
+  }
 }
 
 function resolveCollision(Object, Other) {
@@ -193,7 +247,10 @@ function applyConstraints() {
     ctx.arc(canvas.width / 2, canvas.height / 2, 400, 0, 2 * Math.PI);
     ctx.stroke();
   }
-
+  sticks.forEach((Object) => {
+    Object.update();
+    Object.draw();
+  });
   particles.forEach((Object) => {
     for (let i = 0; i < particles.length; i++) {
       if (particles[i] !== Object) {
@@ -256,6 +313,7 @@ canvas.addEventListener("mouseup", function (e) {
 function drawObjects() {
   particles.forEach((Object) => {
     Object.draw();
+    // gravity
 
     Object.accelerate(
       Math.cos(degrees_to_radians(-canvasRotation) + Math.PI / 2) * 10,
@@ -268,9 +326,7 @@ let canvasRotation = 0;
 
 window.addEventListener("keydown", function (e) {
   if (e.key == "l") {
-    new particle(mousePos.x, mousePos.y, Math.random() * 10 + 5);
-    // new particle(mousePos.x, mousePos.y, 1);
-    particles[particles.length - 1].accelerate(1000, 700);
+    new particle(mousePos.x, mousePos.y, 4);
   }
 
   if (e.key == "k") {
@@ -282,7 +338,7 @@ window.addEventListener("keydown", function (e) {
   }
 
   if (e.key == "g") {
-    new particle(mousePos.x, mousePos.y, 20);
+    rope({ x: mousePos.x, y: mousePos.y }, false, 20, true);
   }
 
   if (e.keyCode == "39") {
