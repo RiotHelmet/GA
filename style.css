@@ -67,3 +67,7 @@ p {
   display: none;
   background-color: rgb(60, 60, 60);
 }
+#selectSlider {
+  display: none;
+  background-color: rgb(60, 60, 60);
+}

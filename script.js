@@ -12,6 +12,7 @@ let ropeSlider = document.getElementById("rope-Slider").value;
 let bombSlider = document.getElementById("bomb-Slider").value;
 
 let clothSlider = document.getElementById("cloth-Slider").value;
+let selectSlider = document.getElementById("select-Slider").value;
 
 let scale = 100;
 // coefficient of restitution
@@ -37,6 +38,26 @@ class Vector {
   }
 }
 
+class cursor {
+  constructor() {
+    this.radius = 2;
+  }
+
+  draw() {
+    if (currentStyle == "select") {
+      this.radius = selectSlider;
+    } else if (currentStyle == "particle") {
+      this.radius = (particleSlider / 30) * scale;
+    }
+    ctx.strokeStyle = "red";
+    ctx.lineWidth = "2";
+    ctx.fillStyle = "green";
+    ctx.beginPath();
+    ctx.arc(mousePos.x, mousePos.y, this.radius, 0, 2 * Math.PI);
+    ctx.stroke();
+  }
+}
+mouseCursor = new cursor();
 class stick {
   constructor(p1, p2) {
     this.startPoint = p1;
@@ -56,22 +77,21 @@ class stick {
     let dir = Dir(this.startpos, this.endpos);
     let Dist = dist(this.startpos, this.endpos);
     let dDist = Dist - this.length;
-    if (dDist > 20) {
+    if (dDist > 50) {
       sticks.splice(sticks.indexOf(this), 1);
       this.startPoint.solid = true;
       this.endPoint.solid = true;
     }
-    if (dDist < -5) {
+    if (dDist < -20) {
       sticks.splice(sticks.indexOf(this), 1);
       this.startPoint.solid = true;
       this.endPoint.solid = true;
     }
-    if (dDist != 0) {
-      this.startPoint.pos.x += Math.cos(dir) * (dDist / 2);
-      this.startPoint.pos.y += Math.sin(dir) * (dDist / 2);
-      this.endPoint.pos.x -= Math.cos(dir) * (dDist / 2);
-      this.endPoint.pos.y -= Math.sin(dir) * (dDist / 2);
-    }
+
+    this.startPoint.pos.x += Math.cos(dir) * (dDist / 2);
+    this.startPoint.pos.y += Math.sin(dir) * (dDist / 2);
+    this.endPoint.pos.x -= Math.cos(dir) * (dDist / 2);
+    this.endPoint.pos.y -= Math.sin(dir) * (dDist / 2);
   }
   draw() {
     ctx.strokeStyle = "red";
@@ -93,6 +113,7 @@ class particle {
     } else {
       this.state = state;
     }
+    this.currentState = this.state;
     this.oldpos = new Vector(x, y);
     this.startpos = new Vector(x, y);
     this.acceleration = new Vector(0, 0);
@@ -127,7 +148,7 @@ function clear() {
 
 function verletIntegrate() {
   particles.forEach((Object) => {
-    if (Object.state == false) {
+    if (Object.currentState == false) {
       Object.velocity.x =
         ((Object.pos.x - Object.oldpos.x) / scale / deltaT) * friction;
       Object.velocity.y =
@@ -195,7 +216,7 @@ function rope(start, end, length, startState) {
 
 function cloth(start, lengthX, lengthY) {
   for (let i = 0; i < lengthX; i++) {
-    new particle(start.x + i * 15, start.y, 1, true, true);
+    new particle(start.x + i * 15, start.y, 1, true, false);
   }
   for (let i = 1; i < lengthY; i++) {
     for (let j = 0; j < lengthX; j++) {
@@ -369,6 +390,7 @@ canvas.addEventListener("mousemove", function (e) {
   mousePos.y = e.offsetY;
 });
 let number = 15;
+pickedUp = [];
 canvas.addEventListener("mousedown", function (e) {
   mousedown = true;
   console.log(clothSlider);
@@ -380,14 +402,28 @@ canvas.addEventListener("mousedown", function (e) {
     bomb(mousePos.x, mousePos.y, bombSlider);
   } else if (currentStyle == "cloth") {
     cloth(mousePos, number, number);
+  } else if (currentStyle == "select") {
+    particles.forEach((Object) => {
+      if (dist(Object.pos, mousePos) < mouseCursor.radius) {
+        pickedUp.push(Object);
+      }
+    });
+    pickedUp.forEach((Object) => {
+      Object.currentState = true;
+    });
   }
 });
 
 canvas.addEventListener("mouseup", function (e) {
   mousedown = false;
+  pickedUp.forEach((Object) => {
+    Object.currentState = Object.state;
+  });
+  pickedUp = [];
 });
 
 function drawObjects() {
+  mouseCursor.draw();
   particles.forEach((Object) => {
     Object.draw();
     // gravity
@@ -418,22 +454,6 @@ window.addEventListener("keydown", function (e) {
 
 var lastLoop;
 
-// function update() {
-//   requestAnimationFrame(update);
-
-//   var thisLoop = new Date();
-//   fps = 1000 / (thisLoop - lastLoop);
-//   lastLoop = thisLoop;
-//   fpsInfo.innerHTML = `Fps: ${Math.round(fps)}`;
-//   deltaT = 1 / fps;
-
-//   clear();
-//   verletIntegrate();
-
-//   applyConstraints();
-//   drawObjects();
-// }
-
 // update();
 let substep = 16;
 
@@ -447,6 +467,17 @@ window.setInterval(() => {
   bombSlider = document.getElementById("bomb-Slider").value;
 
   clothSlider = document.getElementById("cloth-Slider").value;
+
+  selectSlider = document.getElementById("select-Slider").value;
+
+  if (currentStyle == "select") {
+    if (mousedown == true) {
+      pickedUp.forEach((Object) => {
+        Object.pos.x = mousePos.x - (mousePos.x - Object.pos.x);
+        Object.pos.y = mousePos.y - (mousePos.y - Object.pos.y);
+      });
+    }
+  }
 
   var thisLoop = new Date();
   fps = 1000 / (thisLoop - lastLoop);
