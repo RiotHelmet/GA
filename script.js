@@ -56,6 +56,16 @@ class stick {
     let dir = Dir(this.startpos, this.endpos);
     let Dist = dist(this.startpos, this.endpos);
     let dDist = Dist - this.length;
+    if (dDist > 20) {
+      sticks.splice(sticks.indexOf(this), 1);
+      this.startPoint.solid = true;
+      this.endPoint.solid = true;
+    }
+    if (dDist < -5) {
+      sticks.splice(sticks.indexOf(this), 1);
+      this.startPoint.solid = true;
+      this.endPoint.solid = true;
+    }
     if (dDist != 0) {
       this.startPoint.pos.x += Math.cos(dir) * (dDist / 2);
       this.startPoint.pos.y += Math.sin(dir) * (dDist / 2);
@@ -73,7 +83,7 @@ class stick {
 }
 
 class particle {
-  constructor(x, y, mass, state) {
+  constructor(x, y, mass, state, solid) {
     particles.push(this);
     this.pos = new Vector(x, y);
     this.mass = mass;
@@ -86,7 +96,11 @@ class particle {
     this.oldpos = new Vector(x, y);
     this.startpos = new Vector(x, y);
     this.acceleration = new Vector(0, 0);
-
+    if (!solid) {
+      this.solid = false;
+    } else {
+      this.solid = true;
+    }
     this.color = getRandomColor();
     this.radius = (mass / 30) * scale;
   }
@@ -159,10 +173,10 @@ function solveCollision(Object, Other) {
 }
 
 function rope(start, end, length, startState) {
-  new particle(start.x, start.y, 1.5, startState);
+  new particle(start.x, start.y, 1.5, startState, true);
 
   for (let i = 1; i < length; i++) {
-    new particle(start.x + i * 20, start.y, 1.5);
+    new particle(start.x + i * 20, start.y, 1.5, false, true);
   }
 
   for (let i = 0; i < length - 1; i++) {
@@ -181,11 +195,11 @@ function rope(start, end, length, startState) {
 
 function cloth(start, lengthX, lengthY) {
   for (let i = 0; i < lengthX; i++) {
-    new particle(start.x + i * 15, start.y, 1, true);
+    new particle(start.x + i * 15, start.y, 1, true, true);
   }
   for (let i = 1; i < lengthY; i++) {
     for (let j = 0; j < lengthX; j++) {
-      new particle(start.x + j * 15, start.y + i * 15, 1, false);
+      new particle(start.x + j * 15, start.y + i * 15, 1, false, false);
     }
   }
 
@@ -300,7 +314,11 @@ function applyConstraints() {
     for (let i = 0; i < particles.length; i++) {
       if (particles[i] !== Object) {
         if (solveCollision(Object, particles[i])) {
-          resolveCollision(Object, particles[i]);
+          // console.log(Object.solid);
+          console.log(particles[i].solid);
+          if (Object.solid == true || particles[i].solid == true) {
+            resolveCollision(Object, particles[i]);
+          }
         } else {
         }
       }
@@ -355,7 +373,7 @@ canvas.addEventListener("mousedown", function (e) {
   mousedown = true;
   console.log(clothSlider);
   if (currentStyle == "particle") {
-    new particle(mousePos.x, mousePos.y, particleSlider);
+    new particle(mousePos.x, mousePos.y, particleSlider, false, true);
   } else if (currentStyle == "rope") {
     rope({ x: mousePos.x, y: mousePos.y }, false, ropeSlider, true);
   } else if (currentStyle == "bomb") {
