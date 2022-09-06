@@ -41,11 +41,16 @@ p {
 .gameUI button {
   right: 10%;
   position: absolute;
+  background-color: white;
 }
 
 .gameUI div {
   display: flex;
   align-items: center;
+}
+
+#particleButton {
+  background-color: #0075ff;
 }
 
 #particleSlider {

@@ -14,6 +14,19 @@ let bombSlider = document.getElementById("bomb-Slider").value;
 let clothSlider = document.getElementById("cloth-Slider").value;
 let selectSlider = document.getElementById("select-Slider").value;
 
+function clearUI() {
+  document.getElementById("particleSlider").style.display = "none";
+  document.getElementById("ropeSlider").style.display = "none";
+  document.getElementById("bombSlider").style.display = "none";
+  document.getElementById("clothSlider").style.display = "none";
+  document.getElementById("selectSlider").style.display = "none";
+  document.getElementById("particleButton").style.backgroundColor = "white";
+  document.getElementById("ropeButton").style.backgroundColor = "white";
+  document.getElementById("bombButton").style.backgroundColor = "white";
+  document.getElementById("clothButton").style.backgroundColor = "white";
+  document.getElementById("selectButton").style.backgroundColor = "white";
+}
+
 let scale = 100;
 // coefficient of restitution
 let CoR = 0.7;
@@ -66,6 +79,7 @@ class stick {
     this.endpos = new Vector(p2.pos.x, p2.pos.y);
     this.length = dist(p1.pos, p2.pos);
     sticks.push(this);
+    this.color;
   }
   update() {
     this.startpos.x = this.startPoint.pos.x;
@@ -77,6 +91,11 @@ class stick {
     let dir = Dir(this.startpos, this.endpos);
     let Dist = dist(this.startpos, this.endpos);
     let dDist = Dist - this.length;
+    this.color = `rgb(255, 0, 0)`;
+    if (dDist > 3 || dDist < -3) {
+      this.color = `rgb(${Math.abs(255 / (dDist / 2))}, 0, ${dDist * 40})`;
+    }
+
     if (dDist > 50) {
       sticks.splice(sticks.indexOf(this), 1);
       this.startPoint.solid = true;
@@ -94,7 +113,7 @@ class stick {
     this.endPoint.pos.y -= Math.sin(dir) * (dDist / 2);
   }
   draw() {
-    ctx.strokeStyle = "red";
+    ctx.strokeStyle = this.color;
     ctx.beginPath();
     ctx.moveTo(this.startpos.x, this.startpos.y);
     ctx.lineTo(this.endpos.x, this.endpos.y);
@@ -182,6 +201,8 @@ function verletIntegrate() {
     } else {
       Object.pos.x = Object.startpos.x;
       Object.pos.y = Object.startpos.y;
+      Object.oldpos.x = Object.pos.x;
+      Object.oldpos.y = Object.pos.y;
     }
   });
 }
@@ -216,11 +237,11 @@ function rope(start, end, length, startState) {
 
 function cloth(start, lengthX, lengthY) {
   for (let i = 0; i < lengthX; i++) {
-    new particle(start.x + i * 15, start.y, 1, true, false);
+    new particle(start.x + i * 15, start.y, 0, true, false);
   }
   for (let i = 1; i < lengthY; i++) {
     for (let j = 0; j < lengthX; j++) {
-      new particle(start.x + j * 15, start.y + i * 15, 1, false, false);
+      new particle(start.x + j * 15, start.y + i * 15, 0, false, false);
     }
   }
 
@@ -389,7 +410,10 @@ canvas.addEventListener("mousemove", function (e) {
   mousePos.x = e.offsetX;
   mousePos.y = e.offsetY;
 });
-let number = 15;
+
+let deltaXList = [];
+let deltaYList = [];
+let number = 20;
 pickedUp = [];
 canvas.addEventListener("mousedown", function (e) {
   mousedown = true;
@@ -406,6 +430,8 @@ canvas.addEventListener("mousedown", function (e) {
     particles.forEach((Object) => {
       if (dist(Object.pos, mousePos) < mouseCursor.radius) {
         pickedUp.push(Object);
+        deltaXList.push(mousePos.x - Object.pos.x);
+        deltaYList.push(mousePos.y - Object.pos.y);
       }
     });
     pickedUp.forEach((Object) => {
@@ -420,6 +446,8 @@ canvas.addEventListener("mouseup", function (e) {
     Object.currentState = Object.state;
   });
   pickedUp = [];
+  deltaXList = [];
+  deltaYList = [];
 });
 
 function drawObjects() {
@@ -473,8 +501,9 @@ window.setInterval(() => {
   if (currentStyle == "select") {
     if (mousedown == true) {
       pickedUp.forEach((Object) => {
-        Object.pos.x = mousePos.x - (mousePos.x - Object.pos.x);
-        Object.pos.y = mousePos.y - (mousePos.y - Object.pos.y);
+        Object.startpos.x = mousePos.x - deltaXList[pickedUp.indexOf(Object)];
+        Object.startpos.y = mousePos.y - deltaYList[pickedUp.indexOf(Object)];
+        console.log(pickedUp);
       });
     }
   }

@@ -30,7 +30,7 @@
         Particle:
         <button
           id="particleButton"
-          onclick="currentStyle = 'particle'; document.getElementById('particleSlider').style.display = 'block'; document.getElementById('ropeSlider').style.display = 'none'; document.getElementById('bombSlider').style.display = 'none';  document.getElementById('clothSlider').style.display = 'none';"
+          onclick="currentStyle = 'particle'; clearUI();document.getElementById('particleSlider').style.display = 'block'; document.getElementById('particleButton').style.backgroundColor = '#0075ff'; "
         ></button>
       </div>
       <div class="slidecontainer" id="particleSlider">
@@ -48,7 +48,7 @@
         Rope:
         <button
           id="ropeButton"
-          onclick="currentStyle = 'rope'; document.getElementById('particleSlider').style.display = 'none'; document.getElementById('ropeSlider').style.display = 'block'; document.getElementById('bombSlider').style.display = 'none'; document.getElementById('clothSlider').style.display = 'none'; document.getElementById('selectSlider').style.display = 'none'"
+          onclick="currentStyle = 'rope'; clearUI();document.getElementById('ropeSlider').style.display = 'block'; document.getElementById('ropeButton').style.backgroundColor = '#0075ff'; "
         ></button>
       </div>
       <div class="slidecontainer" id="ropeSlider">
@@ -66,7 +66,7 @@
         Bomb:
         <button
           id="bombButton"
-          onclick="currentStyle = 'bomb'; document.getElementById('particleSlider').style.display = 'none'; document.getElementById('ropeSlider').style.display = 'none'; document.getElementById('bombSlider').style.display = 'block'; document.getElementById('clothSlider').style.display = 'none'; document.getElementById('selectSlider').style.display = 'none'"
+          onclick="currentStyle = 'bomb'; clearUI();document.getElementById('bombSlider').style.display = 'block';document.getElementById('bombButton').style.backgroundColor = '#0075ff';  "
         ></button>
       </div>
       <div class="slidecontainer" id="bombSlider">
@@ -84,7 +84,7 @@
         Cloth:
         <button
           id="clothButton"
-          onclick="currentStyle = 'cloth'; document.getElementById('particleSlider').style.display = 'none'; document.getElementById('ropeSlider').style.display = 'none'; document.getElementById('bombSlider').style.display = 'none';document.getElementById('clothSlider').style.display = 'block';document.getElementById('selectSlider').style.display = 'none'"
+          onclick="currentStyle = 'cloth'; clearUI();document.getElementById('clothSlider').style.display = 'block'; document.getElementById('clothButton').style.backgroundColor = '#0075ff'; "
         ></button>
       </div>
       <div class="slidecontainer" id="clothSlider">
@@ -102,7 +102,7 @@
         Select:
         <button
           id="selectButton"
-          onclick="currentStyle = 'select'; document.getElementById('particleSlider').style.display = 'none'; document.getElementById('ropeSlider').style.display = 'none'; document.getElementById('bombSlider').style.display = 'none';document.getElementById('clothSlider').style.display = 'none';document.getElementById('selectSlider').style.display = 'block'"
+          onclick="currentStyle = 'select'; clearUI();document.getElementById('selectSlider').style.display = 'block'; document.getElementById('selectButton').style.backgroundColor = '#0075ff'; "
         ></button>
       </div>
       <div class="slidecontainer" id="selectSlider">
