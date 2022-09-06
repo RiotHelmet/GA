@@ -76,3 +76,20 @@ p {
   display: none;
   background-color: rgb(60, 60, 60);
 }
+
+#moveSlider {
+  display: none;
+  background-color: rgb(60, 60, 60);
+}
+
+#mainUI {
+  width: 156px;
+}
+
+#particleUI {
+  width: 95%;
+  background-color: rgb(60, 60, 60);
+  flex-direction: column;
+  align-items: baseline;
+  display: none;
+}

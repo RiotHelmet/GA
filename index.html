@@ -99,13 +99,13 @@
         />
       </div>
       <div>
-        Select:
+        Move:
         <button
-          id="selectButton"
-          onclick="currentStyle = 'select'; clearUI();document.getElementById('selectSlider').style.display = 'block'; document.getElementById('selectButton').style.backgroundColor = '#0075ff'; "
+          id="moveButton"
+          onclick="currentStyle = 'move'; clearUI();document.getElementById('moveSlider').style.display = 'block'; document.getElementById('moveButton').style.backgroundColor = '#0075ff'; "
         ></button>
       </div>
-      <div class="slidecontainer" id="selectSlider">
+      <div class="slidecontainer" id="moveSlider">
         <p>Size</p>
         <input
           type="range"
@@ -113,8 +113,48 @@
           max="40"
           value="20"
           class="slider"
-          id="select-Slider"
+          id="move-Slider"
         />
+      </div>
+
+      <div>
+        Select:
+        <button
+          id="selectButton"
+          onclick="currentStyle = 'select'; clearUI();document.getElementById('selectSlider').style.display = 'block'; document.getElementById('selectButton').style.backgroundColor = '#0075ff'; "
+        ></button>
+      </div>
+
+      <div id="particleUI">
+        <div>
+          Position:
+          <p id="particleUI-position"></p>
+        </div>
+        <div>
+          Velocity:
+          <p id="particleUI-velocity"></p>
+        </div>
+        <div>
+          Acc:
+          <p id="particleUI-acc"></p>
+        </div>
+        <div>
+          Solid:
+          <label class="switch">
+            <input type="checkbox" id="solidCheckbox" />
+          </label>
+        </div>
+        <div>
+          Fixed:
+          <label class="switch">
+            <input
+              type="checkbox"
+              id="fixedCheckbox"
+              onclick="  selectedObject.startpos.x = selectedObject.pos.x;
+            selectedObject.startpos.y = selectedObject.pos.y;"
+            />
+          </label>
+        </div>
       </div>
     </div>
 

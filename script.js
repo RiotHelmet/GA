@@ -12,20 +12,26 @@ let ropeSlider = document.getElementById("rope-Slider").value;
 let bombSlider = document.getElementById("bomb-Slider").value;
 
 let clothSlider = document.getElementById("cloth-Slider").value;
-let selectSlider = document.getElementById("select-Slider").value;
+let moveSlider = document.getElementById("move-Slider").value;
+
+let particleUI = document.getElementById("particleUI");
 
 function clearUI() {
   document.getElementById("particleSlider").style.display = "none";
   document.getElementById("ropeSlider").style.display = "none";
   document.getElementById("bombSlider").style.display = "none";
   document.getElementById("clothSlider").style.display = "none";
-  document.getElementById("selectSlider").style.display = "none";
+  document.getElementById("moveSlider").style.display = "none";
+
   document.getElementById("particleButton").style.backgroundColor = "white";
   document.getElementById("ropeButton").style.backgroundColor = "white";
   document.getElementById("bombButton").style.backgroundColor = "white";
   document.getElementById("clothButton").style.backgroundColor = "white";
   document.getElementById("selectButton").style.backgroundColor = "white";
+  document.getElementById("moveButton").style.backgroundColor = "white";
 }
+
+let selectedObject = false;
 
 let scale = 100;
 // coefficient of restitution
@@ -57,20 +63,42 @@ class cursor {
   }
 
   draw() {
-    if (currentStyle == "select") {
-      this.radius = selectSlider;
+    if (currentStyle == "move") {
+      this.radius = moveSlider;
     } else if (currentStyle == "particle") {
       this.radius = (particleSlider / 30) * scale;
     }
-    ctx.strokeStyle = "red";
-    ctx.lineWidth = "2";
-    ctx.fillStyle = "green";
-    ctx.beginPath();
-    ctx.arc(mousePos.x, mousePos.y, this.radius, 0, 2 * Math.PI);
-    ctx.stroke();
+    if (currentStyle == "move" || currentStyle == "particle") {
+      ctx.strokeStyle = "red";
+      ctx.lineWidth = "2";
+      ctx.fillStyle = "green";
+      ctx.beginPath();
+      ctx.arc(mousePos.x, mousePos.y, this.radius, 0, 2 * Math.PI);
+      ctx.stroke();
+    }
   }
 }
 mouseCursor = new cursor();
+
+function updateParticleUI(Object) {
+  Object.fixed = document.getElementById("fixedCheckbox").checked;
+
+  Object.currentState = Object.fixed;
+  Object.solid = document.getElementById("solidCheckbox").checked;
+
+  document.getElementById("particleUI-position").innerHTML = `(${Math.floor(
+    Object.pos.x
+  )}, ${Math.floor(Object.pos.y)})`;
+
+  document.getElementById("particleUI-velocity").innerHTML = `(${
+    Math.floor(Object.velocity.x * 10) / 10
+  }, ${Math.floor(Object.velocity.y * 10) / 10})`;
+
+  document.getElementById("particleUI-acc").innerHTML = `(${
+    Math.floor(Object.velocity.x * 10) / 10
+  }, ${Math.floor(Object.velocity.y * 10) / 10})`;
+}
+
 class stick {
   constructor(p1, p2) {
     this.startPoint = p1;
@@ -122,17 +150,17 @@ class stick {
 }
 
 class particle {
-  constructor(x, y, mass, state, solid) {
+  constructor(x, y, mass, fixed, solid) {
     particles.push(this);
     this.pos = new Vector(x, y);
     this.mass = mass;
     this.velocity = new Vector(0, 0);
-    if (!state) {
-      this.state = false;
+    if (!fixed) {
+      this.fixed = false;
     } else {
-      this.state = state;
+      this.fixed = fixed;
     }
-    this.currentState = this.state;
+    this.currentState = this.fixed;
     this.oldpos = new Vector(x, y);
     this.startpos = new Vector(x, y);
     this.acceleration = new Vector(0, 0);
@@ -199,6 +227,9 @@ function verletIntegrate() {
       Object.acceleration.x = 0;
       Object.acceleration.y = 0;
     } else {
+      Object.acceleration.x = 0;
+      Object.acceleration.y = 0;
+
       Object.pos.x = Object.startpos.x;
       Object.pos.y = Object.startpos.y;
       Object.oldpos.x = Object.pos.x;
@@ -229,7 +260,7 @@ function rope(start, end, length, startState) {
   }
 
   if (end !== false) {
-    particles[particles.length - 1].state = true;
+    particles[particles.length - 1].fixed = true;
     particles[particles.length - 1].startpos.x = end.x;
     particles[particles.length - 1].startpos.y = end.y;
   }
@@ -237,15 +268,13 @@ function rope(start, end, length, startState) {
 
 function cloth(start, lengthX, lengthY) {
   for (let i = 0; i < lengthX; i++) {
-    new particle(start.x + i * 15, start.y, 0, true, false);
+    new particle(start.x + i * 10, start.y, 0, true, false);
   }
   for (let i = 1; i < lengthY; i++) {
     for (let j = 0; j < lengthX; j++) {
-      new particle(start.x + j * 15, start.y + i * 15, 0, false, false);
+      new particle(start.x + j * 10, start.y + i * 10, 0, false, false);
     }
   }
-
-  for (let i = 0; i < lengthX * lengthY; i++) {}
 
   for (let j = 0; j < lengthY; j++) {
     for (let i = 0; i < lengthX - 1; i++) {
@@ -413,7 +442,7 @@ canvas.addEventListener("mousemove", function (e) {
 
 let deltaXList = [];
 let deltaYList = [];
-let number = 20;
+let number = 15;
 pickedUp = [];
 canvas.addEventListener("mousedown", function (e) {
   mousedown = true;
@@ -426,7 +455,7 @@ canvas.addEventListener("mousedown", function (e) {
     bomb(mousePos.x, mousePos.y, bombSlider);
   } else if (currentStyle == "cloth") {
     cloth(mousePos, number, number);
-  } else if (currentStyle == "select") {
+  } else if (currentStyle == "move") {
     particles.forEach((Object) => {
       if (dist(Object.pos, mousePos) < mouseCursor.radius) {
         pickedUp.push(Object);
@@ -437,13 +466,23 @@ canvas.addEventListener("mousedown", function (e) {
     pickedUp.forEach((Object) => {
       Object.currentState = true;
     });
+  } else if (currentStyle == "select") {
+    particles.forEach((Object) => {
+      if (dist(mousePos, Object.pos) < Object.radius) {
+        selectedObject = Object;
+
+        document.getElementById("solidCheckbox").checked = selectedObject.solid;
+
+        document.getElementById("fixedCheckbox").checked = selectedObject.fixed;
+      }
+    });
   }
 });
 
 canvas.addEventListener("mouseup", function (e) {
   mousedown = false;
   pickedUp.forEach((Object) => {
-    Object.currentState = Object.state;
+    Object.currentState = Object.fixed;
   });
   pickedUp = [];
   deltaXList = [];
@@ -496,14 +535,17 @@ window.setInterval(() => {
 
   clothSlider = document.getElementById("cloth-Slider").value;
 
-  selectSlider = document.getElementById("select-Slider").value;
+  moveSlider = document.getElementById("move-Slider").value;
 
-  if (currentStyle == "select") {
+  if (selectedObject !== false) {
+    document.getElementById("particleUI").style.display = "flex";
+    updateParticleUI(selectedObject);
+  }
+  if (currentStyle == "move") {
     if (mousedown == true) {
       pickedUp.forEach((Object) => {
         Object.startpos.x = mousePos.x - deltaXList[pickedUp.indexOf(Object)];
         Object.startpos.y = mousePos.y - deltaYList[pickedUp.indexOf(Object)];
-        console.log(pickedUp);
       });
     }
   }
