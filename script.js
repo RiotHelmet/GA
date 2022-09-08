@@ -5,7 +5,7 @@ let ctx = canvas.getContext("2d");
 let fps;
 let fpsInfo = document.getElementById("ui-fps");
 let amountDiv = document.getElementById("ui-amount");
-let deltaT = 1 / 599;
+let deltaT = 0.00466;
 let scale = 100;
 let amountOfObjects = 1;
 let friction = 0.995;
@@ -150,7 +150,6 @@ class particle {
     this.color = "black";
     // Objektets radie
     this.radius = (this.mass * scale) / 10;
-    deltaT = 1 / fps / 1.5;
   }
   update() {
     if (!this.fixed && currentStyle !== "move") {
@@ -502,13 +501,14 @@ function bomb(x, y, power) {
   };
   console.log(bombPos);
   particles.forEach((Object) => {
+    let distance = dist(Object.pos, bombPos);
     // console.log(dist(Object.pos, bombPos));
-    if (dist(Object.pos, bombPos) < power * 20) {
+    if (distance < power * 20) {
       console.log(Object);
       blastDirection = Dir(Object.pos, bombPos);
       Object.accelerate(
-        Math.cos(blastDirection) * -power * 100,
-        Math.sin(blastDirection) * -power * 100
+        Math.cos(blastDirection) * -1 * (power ** 3 / distance),
+        Math.sin(blastDirection) * -1 * (power ** 3 / distance)
       );
     }
   });
@@ -686,7 +686,7 @@ canvas.addEventListener("mousedown", function (e) {
   console.log(pickedUp);
 });
 
-let substep = 4;
+let substep = 2;
 var lastLoop;
 
 window.setInterval(() => {
@@ -713,11 +713,11 @@ window.setInterval(() => {
       }
     });
   }
-
   var thisLoop = new Date();
-  fps = 1000 / (thisLoop - lastLoop);
+  fps = Math.round(1000 / (thisLoop - lastLoop));
   lastLoop = thisLoop;
-  fpsInfo.innerHTML = `Fps: ${Math.round(fps)}`;
+  fpsInfo.innerHTML = `Fps: ${fps}`;
+  deltaT = Math.floor((1 / fps) * 1000) / 1500;
 }, 1000 / (60 * substep));
 
 // Hittar distans mellan två objekt
