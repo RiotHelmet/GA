@@ -93,3 +93,14 @@ p {
   align-items: baseline;
   display: none;
 }
+
+#particle-Amount-div {
+  border: #0075ff 4px solid;
+  background-color: rgb(60, 60, 60);
+  display: flex;
+}
+
+#particle-Amount {
+  all: unset;
+  width: 30%;
+}

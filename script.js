@@ -1,89 +1,41 @@
+// Sätter upp canvasen
 let canvas = document.getElementById("canvas");
 let ctx = canvas.getContext("2d");
-
+// lite variabler
 let fps;
 let fpsInfo = document.getElementById("ui-fps");
-let deltaT;
-
-let particleSlider = document.getElementById("particle-Slider").value;
-
-let ropeSlider = document.getElementById("rope-Slider").value;
-
-let bombSlider = document.getElementById("bomb-Slider").value;
-
-let clothSlider = document.getElementById("cloth-Slider").value;
-let moveSlider = document.getElementById("move-Slider").value;
-
-let particleUI = document.getElementById("particleUI");
-
-function clearUI() {
-  document.getElementById("particleSlider").style.display = "none";
-  document.getElementById("ropeSlider").style.display = "none";
-  document.getElementById("bombSlider").style.display = "none";
-  document.getElementById("clothSlider").style.display = "none";
-  document.getElementById("moveSlider").style.display = "none";
-
-  document.getElementById("particleButton").style.backgroundColor = "white";
-  document.getElementById("ropeButton").style.backgroundColor = "white";
-  document.getElementById("bombButton").style.backgroundColor = "white";
-  document.getElementById("clothButton").style.backgroundColor = "white";
-  document.getElementById("selectButton").style.backgroundColor = "white";
-  document.getElementById("moveButton").style.backgroundColor = "white";
-}
-
-let selectedObject = false;
-
+let amountDiv = document.getElementById("ui-amount");
+let deltaT = 1 / 599;
 let scale = 100;
-// coefficient of restitution
-let CoR = 0.7;
+let amountOfObjects = 1;
+let friction = 0.995;
+let showQuadTree = false;
 let mousePos = {
   x: 0,
   y: 0,
 };
-
-let showCircle = true;
-
-let friction = 0.995;
-
-let particles = [];
-let buttons = [];
-
-let sticks = [];
 let currentStyle = "particle";
+let showCircle = false;
+let CoR = 0.5;
+let selectedObject = false;
 
-class Vector {
-  constructor(x, y) {
-    (this.x = x), (this.y = y);
-  }
-}
+let particleSlider = document.getElementById("particle-Slider");
 
-class cursor {
-  constructor() {
-    this.radius = 2;
-  }
+let particleAmount = document.getElementById("particle-Amount");
 
-  draw() {
-    if (currentStyle == "move") {
-      this.radius = moveSlider;
-    } else if (currentStyle == "particle") {
-      this.radius = (particleSlider / 30) * scale;
-    }
-    if (currentStyle == "move" || currentStyle == "particle") {
-      ctx.strokeStyle = "red";
-      ctx.lineWidth = "2";
-      ctx.fillStyle = "green";
-      ctx.beginPath();
-      ctx.arc(mousePos.x, mousePos.y, this.radius, 0, 2 * Math.PI);
-      ctx.stroke();
-    }
-  }
-}
-mouseCursor = new cursor();
+let ropeSlider = document.getElementById("rope-Slider");
+
+let bombSlider = document.getElementById("bomb-Slider");
+
+let clothSlider = document.getElementById("cloth-Slider");
+
+let moveSlider = document.getElementById("move-Slider");
+
+let particleUI = document.getElementById("particleUI");
 
 function updateParticleUI(Object) {
   Object.fixed = document.getElementById("fixedCheckbox").checked;
-
-  Object.currentState = Object.fixed;
+  Object.currentFixed = Object.fixed;
   Object.solid = document.getElementById("solidCheckbox").checked;
 
   document.getElementById("particleUI-position").innerHTML = `(${Math.floor(
@@ -99,6 +51,157 @@ function updateParticleUI(Object) {
   }, ${Math.floor(Object.velocity.y * 10) / 10})`;
 }
 
+// stänger alla flikar i UI
+function clearUI() {
+  document.getElementById("particleSlider").style.display = "none";
+  document.getElementById("particle-Amount-div").style.display = "none";
+
+  document.getElementById("ropeSlider").style.display = "none";
+  document.getElementById("bombSlider").style.display = "none";
+  document.getElementById("clothSlider").style.display = "none";
+  document.getElementById("moveSlider").style.display = "none";
+
+  document.getElementById("particleButton").style.backgroundColor = "white";
+  document.getElementById("ropeButton").style.backgroundColor = "white";
+  document.getElementById("bombButton").style.backgroundColor = "white";
+  document.getElementById("clothButton").style.backgroundColor = "white";
+  document.getElementById("selectButton").style.backgroundColor = "white";
+  document.getElementById("moveButton").style.backgroundColor = "white";
+}
+
+// Klassen Vector håller ett x värde och ett y värde. Används för saker som positioner eller hastigheter.
+class Vector {
+  constructor(x, y) {
+    (this.x = x), (this.y = y);
+  }
+  mult(Value) {
+    this.x *= Value;
+    this.y *= Value;
+  }
+  add(OtherVector) {
+    this.x += OtherVector.x;
+    this.y += OtherVector.y;
+  }
+
+  sub(OtherVector) {
+    this.x -= OtherVector.x;
+    this.y -= OtherVector.y;
+  }
+  equal(OtherVector) {
+    (this.x = OtherVector.x), (this.y = OtherVector.y);
+  }
+  reset() {
+    this.x = 0;
+    this.y = 0;
+  }
+}
+
+class cursor {
+  constructor() {
+    this.radius = 2;
+  }
+
+  draw() {
+    if (currentStyle == "move") {
+      this.radius = moveSlider.value;
+    } else if (currentStyle == "particle") {
+      this.radius = (particleSlider.value * scale) / 10;
+    }
+    if (currentStyle == "move" || currentStyle == "particle") {
+      ctx.strokeStyle = "red";
+      ctx.lineWidth = "2";
+      ctx.fillStyle = "green";
+      ctx.beginPath();
+      ctx.arc(mousePos.x, mousePos.y, this.radius, 0, 2 * Math.PI);
+      ctx.stroke();
+    }
+  }
+}
+mouseCursor = new cursor();
+
+// Arrays
+// Arrayen particles håller alla partiklar. Detta gör så att jag kan uppdatera alla partiklar varje uppdatering genom foreach()
+let particles = [];
+
+class particle {
+  constructor(x, y, mass, fixed, solid) {
+    particles.push(this);
+    amountDiv.innerHTML = `Objects: ${amountOfObjects}`;
+    amountOfObjects++;
+    // Om objektet är under muspekaren
+    this.currentlyHovered = false;
+    // Positionen
+    this.pos = new Vector(x, y);
+    // Objektets massa
+    this.mass = mass;
+    this.velocity = new Vector(0, 0);
+    // den gamla positionen, används för att hitta hastigheten (gamla positionen - nya positionen / deltaT)
+    this.oldpos = new Vector(x, y);
+    // Positionen som Objektet ska sitta fast vid om den är fixed
+    this.fixedpos = new Vector(x, y);
+    // Accelerationen lägger på sitt värde på hastigheten varje sekund.
+    this.acceleration = new Vector(0, 0);
+    // solid är om Objekter ska kollidera eller ej
+    this.solid = solid;
+    // fixed är om objekter ska kunna flytta på sig eller ej. Alltså om det är fast i plats.
+    this.fixed = fixed;
+    // Anledningen till att finns både en currentFixed och en fixed är för att currentFixed ska kunna ändras tillbaka till sitt normalvärde (fixed)
+    this.currentFixed = this.fixed;
+    this.color = "black";
+    // Objektets radie
+    this.radius = (this.mass * scale) / 10;
+    deltaT = 1 / fps / 1.5;
+  }
+  update() {
+    if (!this.fixed && currentStyle !== "move") {
+      this.fixedpos.equal(this.pos);
+    }
+    //kollar om Objektet är fixerat
+    if (this.currentFixed !== true) {
+      // hittar hastigheten ( delta Pos / delta t)
+      this.velocity.equal({
+        x: (this.pos.x - this.oldpos.x) / scale,
+        y: (this.pos.y - this.oldpos.y) / scale,
+      });
+      this.velocity.mult(friction);
+      //updaterar gamla positionen
+      this.oldpos.equal(this.pos);
+
+      //Flyttar objektet med dess hastighet
+      this.pos.add({
+        x: this.velocity.x * scale + this.acceleration.x * scale,
+        y: this.velocity.y * scale + this.acceleration.y * scale,
+      });
+      // Sätter acceleration till 0
+      this.acceleration.reset();
+    } else {
+      this.acceleration.reset();
+
+      this.pos.equal(this.fixedpos);
+      this.oldpos.equal(this.pos);
+    }
+  }
+  draw() {
+    this.color = "black";
+    if (this.currentlyHovered == true) {
+      ctx.strokeStyle = `#0075ff`;
+      ctx.beginPath();
+      ctx.arc(this.pos.x, this.pos.y, this.radius + 4, 0, 2 * Math.PI);
+      ctx.stroke();
+    }
+    ctx.fillStyle = `${this.color}`;
+    ctx.beginPath();
+    ctx.arc(this.pos.x, this.pos.y, this.radius, 0, 2 * Math.PI);
+    ctx.fill();
+  }
+  accelerate(accX, accY) {
+    this.acceleration.x += accX * deltaT * deltaT;
+    this.acceleration.y += accY * deltaT * deltaT;
+  }
+}
+
+// en stick är en link mellan två partiklar
+let sticks = [];
 class stick {
   constructor(p1, p2) {
     this.startPoint = p1;
@@ -110,18 +213,15 @@ class stick {
     this.color;
   }
   update() {
-    this.startpos.x = this.startPoint.pos.x;
-    this.startpos.y = this.startPoint.pos.y;
-
-    this.endpos.x = this.endPoint.pos.x;
-    this.endpos.y = this.endPoint.pos.y;
+    this.startpos.equal(this.startPoint.pos);
+    this.endpos.equal(this.endPoint.pos);
 
     let dir = Dir(this.startpos, this.endpos);
     let Dist = dist(this.startpos, this.endpos);
     let dDist = Dist - this.length;
-    this.color = `rgb(255, 0, 0)`;
+    this.color = `rgb(0, 0, 0)`;
     if (dDist > 3 || dDist < -3) {
-      this.color = `rgb(${Math.abs(255 / (dDist / 2))}, 0, ${dDist * 40})`;
+      this.color = `rgb($0, 0, $0)`;
     }
 
     if (dDist > 50) {
@@ -149,107 +249,12 @@ class stick {
   }
 }
 
-class particle {
-  constructor(x, y, mass, fixed, solid) {
-    particles.push(this);
-    this.pos = new Vector(x, y);
-    this.mass = mass;
-    this.velocity = new Vector(0, 0);
-    if (!fixed) {
-      this.fixed = false;
-    } else {
-      this.fixed = fixed;
-    }
-    this.currentState = this.fixed;
-    this.oldpos = new Vector(x, y);
-    this.startpos = new Vector(x, y);
-    this.acceleration = new Vector(0, 0);
-    if (!solid) {
-      this.solid = false;
-    } else {
-      this.solid = true;
-    }
-    this.color = getRandomColor();
-    this.radius = (mass / 30) * scale;
-  }
-  draw() {
-    ctx.strokeStyle = "white";
-    ctx.lineWidth = "2";
-    ctx.fillStyle = `${this.color}`;
-    ctx.beginPath();
-    ctx.arc(this.pos.x, this.pos.y, this.radius, 0, 2 * Math.PI);
-    ctx.fill();
-    ctx.stroke();
-  }
-
-  accelerate(accX, accY) {
-    this.acceleration.x += accX * deltaT * deltaT;
-    this.acceleration.y += accY * deltaT * deltaT;
-  }
-}
-
-function clear() {
-  ctx.fillStyle = "white";
-  ctx.fillRect(0, 0, canvas.width, canvas.height);
-}
-
-function verletIntegrate() {
-  particles.forEach((Object) => {
-    if (Object.currentState == false) {
-      Object.velocity.x =
-        ((Object.pos.x - Object.oldpos.x) / scale / deltaT) * friction;
-      Object.velocity.y =
-        ((Object.pos.y - Object.oldpos.y) / scale / deltaT) * friction;
-      minimunVelocity = 0;
-
-      if (
-        Object.velocity.x < minimunVelocity &&
-        Object.velocity.x > -minimunVelocity
-      ) {
-        Object.velocity.x = 0;
-      }
-
-      if (
-        Object.velocity.y < minimunVelocity &&
-        Object.velocity.y > -minimunVelocity
-      ) {
-        Object.velocity.x = 0;
-      }
-
-      Object.oldpos.x = Object.pos.x;
-      Object.oldpos.y = Object.pos.y;
-
-      Object.pos.x +=
-        Object.velocity.x * scale * deltaT + Object.acceleration.x * scale;
-      Object.pos.y +=
-        Object.velocity.y * scale * deltaT + Object.acceleration.y * scale;
-
-      Object.acceleration.x = 0;
-      Object.acceleration.y = 0;
-    } else {
-      Object.acceleration.x = 0;
-      Object.acceleration.y = 0;
-
-      Object.pos.x = Object.startpos.x;
-      Object.pos.y = Object.startpos.y;
-      Object.oldpos.x = Object.pos.x;
-      Object.oldpos.y = Object.pos.y;
-    }
-  });
-}
-
-function solveCollision(Object, Other) {
-  let distance =
-    (Object.pos.x - Other.pos.x) ** 2 + (Object.pos.y - Other.pos.y) ** 2;
-
-  return distance <= (Object.radius + Other.radius) ** 2;
-}
-
+// Gör ett rep
 function rope(start, end, length, startState) {
-  new particle(start.x, start.y, 1.5, startState, true);
+  new particle(start.x, start.y, 0.5, startState, true);
 
   for (let i = 1; i < length; i++) {
-    new particle(start.x + i * 20, start.y, 1.5, false, true);
+    new particle(start.x + i * 20, start.y, 0.5, false, true);
   }
 
   for (let i = 0; i < length - 1; i++) {
@@ -265,14 +270,14 @@ function rope(start, end, length, startState) {
     particles[particles.length - 1].startpos.y = end.y;
   }
 }
-
+// gör ett tyg
 function cloth(start, lengthX, lengthY) {
   for (let i = 0; i < lengthX; i++) {
-    new particle(start.x + i * 10, start.y, 0, true, false);
+    new particle(start.x + i * 10, start.y, 0.25, true, false);
   }
   for (let i = 1; i < lengthY; i++) {
     for (let j = 0; j < lengthX; j++) {
-      new particle(start.x + j * 10, start.y + i * 10, 0, false, false);
+      new particle(start.x + j * 10, start.y + i * 10, 0.25, false, false);
     }
   }
 
@@ -292,62 +297,201 @@ function cloth(start, lengthX, lengthY) {
   }
 }
 
-function resolveCollision(Object, Other) {
-  let collisionDistance =
-    Math.abs(dist(Object.pos, Other.pos) - (Object.radius + Other.radius)) / 2;
+// Målar hela canvasen vit
+function clear() {
+  ctx.fillStyle = "white";
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+}
+let rectangles = [];
+class rectangle {
+  constructor(x, y, width, height) {
+    this.x = x;
+    this.y = y;
+    this.width = width;
+    this.height = height;
+    rectangles.push(this);
+  }
+  contains(child) {
+    return (
+      child.pos.x >= this.x - this.width &&
+      child.pos.x <= this.x + this.width &&
+      child.pos.y >= this.y - this.height &&
+      child.pos.y <= this.y + this.height
+    );
+  }
+  intersects(range) {
+    return !(
+      range.x - range.width > this.x + this.width ||
+      range.x + range.width < this.x - this.width ||
+      range.y - range.height > this.y + this.height ||
+      range.y + range.height < this.y - this.height
+    );
+  }
+  draw() {
+    ctx.strokeStyle = "blue";
+    ctx.beginPath();
+    ctx.rect(
+      this.x - this.width,
+      this.y - this.height,
+      this.width * 2,
+      this.height * 2
+    );
+    ctx.stroke();
+  }
+}
 
-  const collisionAngle = Dir(Object.pos, Other.pos);
+class quadTree {
+  constructor(boundary, n) {
+    this.boundary = boundary;
+    this.capacity = n;
+    this.children = [];
+    this.divided = false;
+  }
 
-  Object.pos.x += Math.cos(collisionAngle - Math.PI) * collisionDistance;
-  Object.pos.y += Math.sin(collisionAngle - Math.PI) * collisionDistance;
+  subdivide() {
+    let nw = new rectangle(
+      this.boundary.x - this.boundary.width / 2,
+      this.boundary.y - this.boundary.height / 2,
+      this.boundary.width / 2,
+      this.boundary.height / 2
+    );
+    this.northwest = new quadTree(nw, this.capacity);
+    let ne = new rectangle(
+      this.boundary.x + this.boundary.width / 2,
+      this.boundary.y - this.boundary.height / 2,
+      this.boundary.width / 2,
+      this.boundary.height / 2
+    );
+    this.northeast = new quadTree(ne, this.capacity);
+    let sw = new rectangle(
+      this.boundary.x - this.boundary.width / 2,
+      this.boundary.y + this.boundary.height / 2,
+      this.boundary.width / 2,
+      this.boundary.height / 2
+    );
+    this.southwest = new quadTree(sw, this.capacity);
+    let se = new rectangle(
+      this.boundary.x + this.boundary.width / 2,
+      this.boundary.y + this.boundary.height / 2,
+      this.boundary.width / 2,
+      this.boundary.height / 2
+    );
+    this.southeast = new quadTree(se, this.capacity);
+    this.divided = true;
+  }
+  query(range, found) {
+    if (!found) {
+      found = [];
+    }
+    if (!this.boundary.intersects(range)) {
+      // return nothing
+      return;
+    } else {
+      this.children.forEach((child) => {
+        if (range.contains(child)) {
+          found.push(child);
+        }
+      });
+      if (this.divided) {
+        this.northwest.query(range, found);
+        this.northeast.query(range, found);
+        this.southwest.query(range, found);
+        this.southeast.query(range, found);
+      }
+    }
+    return found;
+  }
 
-  Other.pos.x += Math.cos(collisionAngle) * collisionDistance;
-  Other.pos.y += Math.sin(collisionAngle) * collisionDistance;
+  draw() {
+    ctx.strokeStyle = "black";
+    ctx.beginPath();
+    ctx.rect(
+      this.boundary.x - this.boundary.width,
+      this.boundary.y - this.boundary.height,
+      this.boundary.width * 2,
+      this.boundary.height * 2
+    );
+    ctx.stroke();
+    if (this.divided) {
+      this.northeast.draw();
+      this.northwest.draw();
+      this.southeast.draw();
+      this.southwest.draw();
+    }
+  }
 
-  const m1 = Object.mass;
-  const m2 = Other.mass;
+  insert(child) {
+    if (!this.boundary.contains(child)) {
+      return;
+    }
 
-  let vInit1 = Math.sqrt(Object.velocity.x ** 2 + Object.velocity.y ** 2);
-  let vInit2 = Math.sqrt(Other.velocity.x ** 2 + Other.velocity.y ** 2);
+    if (this.children.length < this.capacity) {
+      this.children.push(child);
+    } else {
+      if (!this.divided) {
+        this.subdivide();
+      }
+      this.northeast.insert(child);
+      this.northwest.insert(child);
+      this.southeast.insert(child);
+      this.southwest.insert(child);
+    }
+  }
+  draw() {
+    ctx.strokeStyle = "red";
+    ctx.beginPath();
+    ctx.rect(
+      this.boundary.x - this.boundary.width,
+      this.boundary.y - this.boundary.height,
+      this.boundary.width * 2,
+      this.boundary.height * 2
+    );
+    ctx.stroke();
+    if (this.divided) {
+      this.northeast.draw();
+      this.northwest.draw();
+      this.southwest.draw();
+      this.southeast.draw();
+    }
+  }
+}
 
-  // if (Object.velocity.x < 0) {
-  //   if (Object.velocity.y >= 0) {
-  //     vInit1 *= -1;
-  //   }
-  // }
-  // if (Object.velocity.y < 0) {
-  //   if (Object.velocity.x >= 0) {
-  //     vInit1 *= -1;
-  //   }
-  // }
+boundary = new rectangle(
+  canvas.width / 2,
+  canvas.height / 2,
+  canvas.width / 2,
+  canvas.height / 2
+);
+qTree = new quadTree(boundary, 4);
 
-  // if (Other.velocity.x < 0) {
-  //   if (Other.velocity.y >= 0) {
-  //     vInit2 *= -1;
-  //   }
-  // }
-  // if (Other.velocity.y < 0) {
-  //   if (Other.velocity.x >= 0) {
-  //     vInit2 *= -1;
-  //   }
-  // }
+function collisionTree() {
+  rectangles = [];
+  qTree.children = [];
+  qTree.divided = false;
+  particles.forEach((Object) => {
+    qTree.insert(Object);
+  });
 
-  // let vFin1 =
-  //   ((m1 - m2) / (m1 + m2)) * vInit1 + ((2 * m2) / (m1 + m2)) * vInit2;
-
-  // let vFin2 =
-  //   ((2 * m1) / (m1 + m2)) * vInit1 + ((m2 - m1) / (m1 + m2)) * vInit2;
-
-  let vFin1 =
-    (CoR * m2 * (vInit2 - vInit1) + m1 * vInit1 + m2 * vInit2) / (m1 + m2);
-  let vFin2 =
-    (CoR * m1 * (vInit1 - vInit2) + m1 * vInit1 + m2 * vInit2) / (m1 + m2);
-
-  Object.velocity.x = Math.cos(collisionAngle - Math.PI) * vFin1;
-  Object.velocity.y = Math.sin(collisionAngle - Math.PI) * vFin1;
-
-  Other.velocity.x = Math.cos(collisionAngle) * vFin2;
-  Other.velocity.y = Math.sin(collisionAngle) * vFin2;
+  particles.forEach((particle) => {
+    if (particle.solid) {
+      range = new rectangle(
+        particle.pos.x,
+        particle.pos.y,
+        particle.radius * 2,
+        particle.radius * 2
+      );
+      let others = qTree.query(range);
+      others.forEach((other) => {
+        if (other !== particle) {
+          if (dist(particle.pos, other.pos) <= particle.radius + other.radius) {
+            if (particle.solid && other.solid) {
+              resolveCollision(particle, other);
+            }
+          }
+        }
+      });
+    }
+  });
 }
 
 function bomb(x, y, power) {
@@ -370,6 +514,39 @@ function bomb(x, y, power) {
   });
 }
 
+function gravity() {
+  particles.forEach((Object) => {
+    Object.accelerate(0, 10);
+  });
+}
+
+// Uppdaterar alla Objekt
+function verletIntegrate() {
+  particles.forEach((Object) => {
+    Object.update();
+  });
+  sticks.forEach((Object) => {
+    Object.update();
+  });
+}
+
+// Målar ut alla Objekt
+function drawObjects() {
+  particles.forEach((Object) => {
+    Object.draw();
+  });
+  mouseCursor.draw();
+  sticks.forEach((Object) => {
+    Object.draw();
+  });
+  if (showQuadTree) {
+    rectangles.forEach((Object) => {
+      Object.draw();
+    });
+    qTree.draw();
+  }
+}
+
 function applyConstraints() {
   if (showCircle == true) {
     ctx.strokeStyle = "black";
@@ -377,23 +554,7 @@ function applyConstraints() {
     ctx.arc(canvas.width / 2, canvas.height / 2, 300, 0, 2 * Math.PI);
     ctx.stroke();
   }
-  sticks.forEach((Object) => {
-    Object.update();
-    Object.draw();
-  });
   particles.forEach((Object) => {
-    for (let i = 0; i < particles.length; i++) {
-      if (particles[i] !== Object) {
-        if (solveCollision(Object, particles[i])) {
-          // console.log(Object.solid);
-          console.log(particles[i].solid);
-          if (Object.solid == true || particles[i].solid == true) {
-            resolveCollision(Object, particles[i]);
-          }
-        } else {
-        }
-      }
-    }
     if (showCircle == true) {
       if (
         dist(Object.pos, { x: canvas.width / 2, y: canvas.height / 2 }) >
@@ -434,25 +595,67 @@ function applyConstraints() {
     }
   });
 }
-let mousedown = false;
+
+function resolveCollision(Object, Other) {
+  let collisionDistance =
+    Math.abs(dist(Object.pos, Other.pos) - (Object.radius + Other.radius)) / 2;
+
+  const collisionAngle = Dir(Object.pos, Other.pos);
+
+  Object.pos.x += Math.cos(collisionAngle - Math.PI) * collisionDistance;
+  Object.pos.y += Math.sin(collisionAngle - Math.PI) * collisionDistance;
+
+  Other.pos.x += Math.cos(collisionAngle) * collisionDistance;
+  Other.pos.y += Math.sin(collisionAngle) * collisionDistance;
+}
+
 canvas.addEventListener("mousemove", function (e) {
   mousePos.x = e.offsetX;
   mousePos.y = e.offsetY;
+  if (currentStyle == "move") {
+    if (mouseDown == true) {
+      pickedUp.forEach((Object) => {
+        Object.fixedpos.x = mousePos.x - deltaXList[pickedUp.indexOf(Object)];
+        Object.fixedpos.y = mousePos.y - deltaYList[pickedUp.indexOf(Object)];
+      });
+    }
+  }
 });
+
+canvas.addEventListener("mouseup", function (e) {
+  mouseDown = false;
+  pickedUp.forEach((Object) => {
+    Object.currentFixed = Object.fixed;
+  });
+  pickedUp = [];
+  deltaXList = [];
+  deltaYList = [];
+});
+
+let mouseDown = false;
 
 let deltaXList = [];
 let deltaYList = [];
-let number = 15;
+let number = 25;
 pickedUp = [];
 canvas.addEventListener("mousedown", function (e) {
-  mousedown = true;
-  console.log(clothSlider);
+  mouseDown = true;
   if (currentStyle == "particle") {
-    new particle(mousePos.x, mousePos.y, particleSlider, false, true);
+    for (let i = 0; i < particleAmount.value; i++) {
+      new particle(
+        mousePos.x +
+          (Math.ceil(Math.sqrt(i)) * particleSlider.value * scale) / 30,
+        mousePos.y +
+          (Math.ceil(Math.sqrt(i)) * particleSlider.value * scale) / 30,
+        particleSlider.value,
+        false,
+        true
+      );
+    }
   } else if (currentStyle == "rope") {
-    rope({ x: mousePos.x, y: mousePos.y }, false, ropeSlider, true);
+    rope({ x: mousePos.x, y: mousePos.y }, false, ropeSlider.value, true);
   } else if (currentStyle == "bomb") {
-    bomb(mousePos.x, mousePos.y, bombSlider);
+    bomb(mousePos.x, mousePos.y, bombSlider.value);
   } else if (currentStyle == "cloth") {
     cloth(mousePos, number, number);
   } else if (currentStyle == "move") {
@@ -461,117 +664,61 @@ canvas.addEventListener("mousedown", function (e) {
         pickedUp.push(Object);
         deltaXList.push(mousePos.x - Object.pos.x);
         deltaYList.push(mousePos.y - Object.pos.y);
+        Object.fixedpos.x = mousePos.x - deltaXList[pickedUp.indexOf(Object)];
+        Object.fixedpos.y = mousePos.y - deltaYList[pickedUp.indexOf(Object)];
       }
     });
     pickedUp.forEach((Object) => {
-      Object.currentState = true;
+      Object.currentFixed = true;
     });
   } else if (currentStyle == "select") {
     particles.forEach((Object) => {
       if (dist(mousePos, Object.pos) < Object.radius) {
         selectedObject = Object;
-
+        selectedObject.currentlyHovered = true;
         document.getElementById("solidCheckbox").checked = selectedObject.solid;
-
         document.getElementById("fixedCheckbox").checked = selectedObject.fixed;
+      } else {
+        Object.currentlyHovered = false;
       }
     });
   }
+  console.log(pickedUp);
 });
 
-canvas.addEventListener("mouseup", function (e) {
-  mousedown = false;
-  pickedUp.forEach((Object) => {
-    Object.currentState = Object.fixed;
-  });
-  pickedUp = [];
-  deltaXList = [];
-  deltaYList = [];
-});
-
-function drawObjects() {
-  mouseCursor.draw();
-  particles.forEach((Object) => {
-    Object.draw();
-    // gravity
-
-    Object.accelerate(
-      Math.cos(degrees_to_radians(-canvasRotation) + Math.PI / 2) * 10,
-      Math.sin(degrees_to_radians(-canvasRotation) + Math.PI / 2) * 10
-    );
-  });
-  buttons.forEach((Object) => {
-    Object.draw();
-  });
-}
-
-let canvasRotation = 0;
-
-window.addEventListener("keydown", function (e) {
-  if (e.keyCode == "37") {
-    canvasRotation += 15;
-  }
-
-  if (e.keyCode == "39") {
-    canvasRotation -= 15;
-  }
-
-  canvas.style.transform = `rotate(${canvasRotation}deg)`;
-});
-
+let substep = 4;
 var lastLoop;
 
-// update();
-let substep = 16;
-
 window.setInterval(() => {
-  // requestAnimationFrame(update);
-
-  particleSlider = document.getElementById("particle-Slider").value;
-
-  ropeSlider = document.getElementById("rope-Slider").value;
-
-  bombSlider = document.getElementById("bomb-Slider").value;
-
-  clothSlider = document.getElementById("cloth-Slider").value;
-
-  moveSlider = document.getElementById("move-Slider").value;
+  clear();
+  gravity();
+  verletIntegrate();
+  applyConstraints();
+  drawObjects();
+  collisionTree();
 
   if (selectedObject !== false) {
     document.getElementById("particleUI").style.display = "flex";
     updateParticleUI(selectedObject);
   }
-  if (currentStyle == "move") {
-    if (mousedown == true) {
-      pickedUp.forEach((Object) => {
-        Object.startpos.x = mousePos.x - deltaXList[pickedUp.indexOf(Object)];
-        Object.startpos.y = mousePos.y - deltaYList[pickedUp.indexOf(Object)];
-      });
-    }
+
+  if (currentStyle == "select") {
+    particles.forEach((particle) => {
+      if (dist(mousePos, particle.pos) < particle.radius) {
+        particle.currentlyHovered = true;
+      } else {
+        if (selectedObject !== particle) {
+          particle.currentlyHovered = false;
+        }
+      }
+    });
   }
 
   var thisLoop = new Date();
   fps = 1000 / (thisLoop - lastLoop);
   lastLoop = thisLoop;
   fpsInfo.innerHTML = `Fps: ${Math.round(fps)}`;
-
-  document.getElementById(
-    "ui-amount"
-  ).innerHTML = `Objects : ${particles.length}`;
-  deltaT = 1 / fps;
-
-  clear();
-  verletIntegrate();
-
-  applyConstraints();
-  drawObjects();
 }, 1000 / (60 * substep));
-
-//
-//
-// Olika funktioner
-//
-//
 
 // Hittar distans mellan två objekt
 function dist(a, b) {
@@ -609,13 +756,4 @@ function getRandomColor() {
     color += letters[Math.floor(Math.random() * 16)];
   }
   return color;
-}
-
-function isInside(pos, rect) {
-  return (
-    pos.x > rect.pos.x &&
-    pos.x < rect.pos.x + rect.width &&
-    pos.y < rect.y + rect.height &&
-    pos.y > rect.y
-  );
 }

@@ -10,11 +10,13 @@
   <body>
     <div class="gameUI" id="mainUI">
       <div id="ui-fps">100</div>
-      <div id="ui-amount">100</div>
+      <div id="ui-amount">Objects: 0</div>
 
       <div>
         Clear:
-        <button onclick="particles = []; sticks = []"></button>
+        <button
+          onclick="particles = []; sticks = []; amountOfObjects = 1"
+        ></button>
       </div>
 
       <div>
@@ -22,7 +24,16 @@
         <button
           onclick="if(showCircle == false) {showCircle = true} else {
           showCircle = false
-        }; "
+        };"
+        ></button>
+      </div>
+
+      <div>
+        Toggle QuadTree:
+        <button
+          onclick="if(showQuadTree == false) {showQuadTree = true} else {
+          showQuadTree = false
+        };"
         ></button>
       </div>
 
@@ -30,7 +41,7 @@
         Particle:
         <button
           id="particleButton"
-          onclick="currentStyle = 'particle'; clearUI();document.getElementById('particleSlider').style.display = 'block'; document.getElementById('particleButton').style.backgroundColor = '#0075ff'; "
+          onclick="currentStyle = 'particle'; clearUI();document.getElementById('particleSlider').style.display = 'block';document.getElementById('particle-Amount-div').style.display = 'flex '; document.getElementById('particleButton').style.backgroundColor = '#0075ff'; "
         ></button>
       </div>
       <div class="slidecontainer" id="particleSlider">
@@ -38,11 +49,15 @@
         <input
           type="range"
           min="1"
-          max="30"
-          value="10"
+          max="10"
+          value="4"
           class="slider"
           id="particle-Slider"
         />
+      </div>
+      <div id="particle-Amount-div">
+        <p>Amount:</p>
+        <input value="1" id="particle-Amount" />
       </div>
       <div>
         Rope:
