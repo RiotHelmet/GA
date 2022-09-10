@@ -5,7 +5,7 @@ let ctx = canvas.getContext("2d");
 let fps;
 let fpsInfo = document.getElementById("ui-fps");
 let amountDiv = document.getElementById("ui-amount");
-let deltaT = 0.00466;
+let deltaT = 1;
 let scale = 100;
 let amountOfObjects = 1;
 let friction = 0.995;
@@ -63,6 +63,7 @@ function clearUI() {
 
   document.getElementById("particleButton").style.backgroundColor = "white";
   document.getElementById("ropeButton").style.backgroundColor = "white";
+  document.getElementById("wallButton").style.backgroundColor = "white";
   document.getElementById("bombButton").style.backgroundColor = "white";
   document.getElementById("clothButton").style.backgroundColor = "white";
   document.getElementById("selectButton").style.backgroundColor = "white";
@@ -123,11 +124,15 @@ mouseCursor = new cursor();
 // Arrayen particles håller alla partiklar. Detta gör så att jag kan uppdatera alla partiklar varje uppdatering genom foreach()
 let particles = [];
 
+let maxVelocity = 0.05;
+
 class particle {
-  constructor(x, y, mass, fixed, solid) {
+  constructor(x, y, mass, fixed, solid, cloth) {
     particles.push(this);
     amountDiv.innerHTML = `Objects: ${amountOfObjects}`;
     amountOfObjects++;
+    this.partOfRope = false;
+    this.cloth = cloth;
     // Om objektet är under muspekaren
     this.currentlyHovered = false;
     // Positionen
@@ -150,6 +155,7 @@ class particle {
     this.color = "black";
     // Objektets radie
     this.radius = (this.mass * scale) / 10;
+    this.addedVelocity = new Vector(0, 0);
   }
   update() {
     if (!this.fixed && currentStyle !== "move") {
@@ -162,6 +168,15 @@ class particle {
         x: (this.pos.x - this.oldpos.x) / scale,
         y: (this.pos.y - this.oldpos.y) / scale,
       });
+      if (this.addedVelocity.x !== 0 || this.addedVelocity.y !== 0) {
+        this.velocity.equal(this.addedVelocity);
+      }
+      if (this.velocity.x > maxVelocity) {
+        this.velocity.x = maxVelocity;
+      }
+      if (this.velocity.y > maxVelocity) {
+        this.velocity.y = maxVelocity;
+      }
       this.velocity.mult(friction);
       //updaterar gamla positionen
       this.oldpos.equal(this.pos);
@@ -173,6 +188,7 @@ class particle {
       });
       // Sätter acceleration till 0
       this.acceleration.reset();
+      this.addedVelocity.reset();
     } else {
       this.acceleration.reset();
 
@@ -181,7 +197,7 @@ class particle {
     }
   }
   draw() {
-    this.color = "black";
+    this.color = `rgb(${(this.velocity.x + this.velocity.y) * 10000}, 0, 0)`;
     if (this.currentlyHovered == true) {
       ctx.strokeStyle = `#0075ff`;
       ctx.beginPath();
@@ -199,39 +215,92 @@ class particle {
   }
 }
 
+class collisionBox {
+  constructor(x, y, radius) {
+    this.partOfRope = true;
+    this.solid = true;
+    this.mass = 1;
+    this.radius = radius;
+    this.pos = new Vector(x, y);
+  }
+  draw() {
+    ctx.strokeStyle = `#0075ff`;
+    ctx.beginPath();
+    ctx.arc(this.pos.x, this.pos.y, this.radius, 0, 2 * Math.PI);
+    ctx.stroke();
+  }
+}
+
 // en stick är en link mellan två partiklar
 let sticks = [];
 class stick {
-  constructor(p1, p2) {
+  constructor(p1, p2, collisionAmount, isWall) {
+    p1.partOfRope = true;
+    p2.partOfRope = true;
+    if (isWall == true) {
+      this.isWall = true;
+    } else {
+      this.isWall = false;
+    }
     this.startPoint = p1;
     this.endPoint = p2;
     this.startpos = new Vector(p1.pos.x, p1.pos.y);
     this.endpos = new Vector(p2.pos.x, p2.pos.y);
     this.length = dist(p1.pos, p2.pos);
     sticks.push(this);
+    this.cloth = false;
+    this.radius = 10;
     this.color;
+    this.collisionBoxes = [];
+    if (collisionAmount) {
+      this.collisionAmount = collisionAmount;
+      for (let i = 1; i < collisionAmount + 1; i++) {
+        this.collisionBoxes.push(
+          new collisionBox(
+            this.startpos.x + ((this.endpos.x - this.startpos.x) / 5) * i,
+            this.startpos.y + ((this.endpos.y - this.startpos.y) / 5) * i,
+            4
+          )
+        );
+      }
+    }
   }
   update() {
     this.startpos.equal(this.startPoint.pos);
     this.endpos.equal(this.endPoint.pos);
-
+    if (this.collisionAmount) {
+      for (let i = 1; i < this.collisionAmount + 1; i++) {
+        this.collisionBoxes[i - 1].pos.x =
+          this.startpos.x +
+          ((this.endpos.x - this.startpos.x) / (this.collisionAmount + 1)) * i;
+        this.collisionBoxes[i - 1].pos.y =
+          this.startpos.y +
+          ((this.endpos.y - this.startpos.y) / (this.collisionAmount + 1)) * i;
+      }
+    }
+    if (this.isWall) {
+      this.length = dist(this.startpos, this.endpos);
+    }
     let dir = Dir(this.startpos, this.endpos);
     let Dist = dist(this.startpos, this.endpos);
     let dDist = Dist - this.length;
     this.color = `rgb(0, 0, 0)`;
     if (dDist > 3 || dDist < -3) {
-      this.color = `rgb($0, 0, $0)`;
+      this.color = `rgb(${dDist * 25}, 0, 0)`;
     }
-
-    if (dDist > 50) {
-      sticks.splice(sticks.indexOf(this), 1);
-      this.startPoint.solid = true;
-      this.endPoint.solid = true;
-    }
-    if (dDist < -20) {
-      sticks.splice(sticks.indexOf(this), 1);
-      this.startPoint.solid = true;
-      this.endPoint.solid = true;
+    if (!this.isWall) {
+      if (dDist > 50) {
+        this.collisionBoxes = [];
+        this.startPoint.solid = true;
+        this.endPoint.solid = true;
+        sticks.splice(sticks.indexOf(this), 1);
+      }
+      if (dDist < -20) {
+        this.collisionBoxes = [];
+        this.startPoint.solid = true;
+        this.endPoint.solid = true;
+        sticks.splice(sticks.indexOf(this), 1);
+      }
     }
 
     this.startPoint.pos.x += Math.cos(dir) * (dDist / 2);
@@ -259,7 +328,8 @@ function rope(start, end, length, startState) {
   for (let i = 0; i < length - 1; i++) {
     new stick(
       particles[particles.length - length + i],
-      particles[particles.length - length + i + 1]
+      particles[particles.length - length + i + 1],
+      1
     );
   }
 
@@ -269,14 +339,27 @@ function rope(start, end, length, startState) {
     particles[particles.length - 1].startpos.y = end.y;
   }
 }
+
+function wall(start, end) {
+  new particle(start.x, start.y, 0.5, true, true, false, false);
+  new particle(end.x, end.y, 0.5, true, true, false, false);
+
+  new stick(
+    particles[particles.length - 2],
+    particles[particles.length - 1],
+    20,
+    true
+  );
+}
+
 // gör ett tyg
 function cloth(start, lengthX, lengthY) {
   for (let i = 0; i < lengthX; i++) {
-    new particle(start.x + i * 10, start.y, 0.25, true, false);
+    new particle(start.x + i * 10, start.y, 0.25, true, true, true);
   }
   for (let i = 1; i < lengthY; i++) {
     for (let j = 0; j < lengthX; j++) {
-      new particle(start.x + j * 10, start.y + i * 10, 0.25, false, false);
+      new particle(start.x + j * 10, start.y + i * 10, 0.25, false, true, true);
     }
   }
 
@@ -465,12 +548,17 @@ qTree = new quadTree(boundary, 4);
 
 function collisionTree() {
   rectangles = [];
+
   qTree.children = [];
   qTree.divided = false;
   particles.forEach((Object) => {
     qTree.insert(Object);
   });
-
+  sticks.forEach((Object) => {
+    Object.collisionBoxes.forEach((Object) => {
+      qTree.insert(Object);
+    });
+  });
   particles.forEach((particle) => {
     if (particle.solid) {
       range = new rectangle(
@@ -479,12 +567,16 @@ function collisionTree() {
         particle.radius * 2,
         particle.radius * 2
       );
-      let others = qTree.query(range);
-      others.forEach((other) => {
+
+      qTree.query(range).forEach((other) => {
         if (other !== particle) {
           if (dist(particle.pos, other.pos) <= particle.radius + other.radius) {
             if (particle.solid && other.solid) {
-              resolveCollision(particle, other);
+              if (particle.cloth !== true || other.cloth !== true) {
+                if (particle.partOfRope !== true || other.partOfRope !== true) {
+                  resolveCollision(particle, other);
+                }
+              }
             }
           }
         }
@@ -545,15 +637,20 @@ function drawObjects() {
     });
     qTree.draw();
   }
-}
-
-function applyConstraints() {
+  sticks.forEach((Object) => {
+    Object.collisionBoxes.forEach((Object) => {
+      Object.draw();
+    });
+  });
   if (showCircle == true) {
     ctx.strokeStyle = "black";
     ctx.beginPath();
     ctx.arc(canvas.width / 2, canvas.height / 2, 300, 0, 2 * Math.PI);
     ctx.stroke();
   }
+}
+
+function applyConstraints() {
   particles.forEach((Object) => {
     if (showCircle == true) {
       if (
@@ -597,16 +694,26 @@ function applyConstraints() {
 }
 
 function resolveCollision(Object, Other) {
+  let ObjectRatio = 1;
+  let OtherRatio = 1;
+
+  if (Other.mass > Object.mass) {
+    ObjectRatio = 1;
+    OtherRatio = Object.mass ** 2 / Other.mass ** 2;
+  } else {
+    OtherRatio = 1;
+    ObjectRatio = Other.mass ** 2 / Object.mass ** 2;
+  }
+
   let collisionDistance =
     Math.abs(dist(Object.pos, Other.pos) - (Object.radius + Other.radius)) / 2;
-
   const collisionAngle = Dir(Object.pos, Other.pos);
-
-  Object.pos.x += Math.cos(collisionAngle - Math.PI) * collisionDistance;
-  Object.pos.y += Math.sin(collisionAngle - Math.PI) * collisionDistance;
-
-  Other.pos.x += Math.cos(collisionAngle) * collisionDistance;
-  Other.pos.y += Math.sin(collisionAngle) * collisionDistance;
+  Object.pos.x +=
+    Math.cos(collisionAngle - Math.PI) * collisionDistance * ObjectRatio;
+  Object.pos.y +=
+    Math.sin(collisionAngle - Math.PI) * collisionDistance * ObjectRatio;
+  Other.pos.x += Math.cos(collisionAngle) * collisionDistance * OtherRatio;
+  Other.pos.y += Math.sin(collisionAngle) * collisionDistance * OtherRatio;
 }
 
 canvas.addEventListener("mousemove", function (e) {
@@ -641,12 +748,18 @@ pickedUp = [];
 canvas.addEventListener("mousedown", function (e) {
   mouseDown = true;
   if (currentStyle == "particle") {
+    Xcount = 0;
+    Ycount = 0;
     for (let i = 0; i < particleAmount.value; i++) {
+      split = Math.ceil(Math.sqrt(particleAmount.value));
+      Xcount++;
+      if (i % split == 0) {
+        Ycount++;
+        Xcount = 0;
+      }
       new particle(
-        mousePos.x +
-          (Math.ceil(Math.sqrt(i)) * particleSlider.value * scale) / 30,
-        mousePos.y +
-          (Math.ceil(Math.sqrt(i)) * particleSlider.value * scale) / 30,
+        mousePos.x + Xcount * ((particleSlider.value * scale) / 5),
+        mousePos.y + (Ycount - 1) * ((particleSlider.value * scale) / 5),
         particleSlider.value,
         false,
         true
@@ -682,20 +795,21 @@ canvas.addEventListener("mousedown", function (e) {
         Object.currentlyHovered = false;
       }
     });
+  } else if (currentStyle == "wall") {
+    wall(mousePos, { x: mousePos.x + 50, y: mousePos.y });
   }
-  console.log(pickedUp);
 });
 
-let substep = 2;
+let substep = 4;
 var lastLoop;
 
 window.setInterval(() => {
-  clear();
+  applyConstraints();
   gravity();
   verletIntegrate();
-  applyConstraints();
-  drawObjects();
   collisionTree();
+  clear();
+  drawObjects();
 
   if (selectedObject !== false) {
     document.getElementById("particleUI").style.display = "flex";
@@ -717,8 +831,11 @@ window.setInterval(() => {
   fps = Math.round(1000 / (thisLoop - lastLoop));
   lastLoop = thisLoop;
   fpsInfo.innerHTML = `Fps: ${fps}`;
-  deltaT = Math.floor((1 / fps) * 1000) / 1500;
 }, 1000 / (60 * substep));
+deltaT = 1 / 150;
+// window.setInterval(() => {
+//   deltaT = Math.floor((1 / fps) * 1000) / 1000;
+// }, 100);
 
 // Hittar distans mellan två objekt
 function dist(a, b) {
